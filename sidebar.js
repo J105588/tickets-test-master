@@ -10,6 +10,7 @@ const sidebarHTML = `
       <button class="change-mode-btn" onclick="showModeChangeModal()">モード変更</button>
     </div>
   </div>
+  <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
   <div id="mode-change-modal" class="modal" style="display: none;">
     <div class="modal-content">
       <h3>モード変更</h3>
@@ -146,25 +147,37 @@ function updateModeDisplay() {
 
 function toggleSidebar() {
     const sidebar = document.getElementById("mySidebar");
-    const main = document.getElementById("main-content");
-
-    if (!sidebar || !main) {
+    if (!sidebar) {
         console.warn('Sidebar or main content element not found');
         return;
     }
-
-    if (sidebar.style.width === "250px") {
-        sidebar.style.width = "0";
-        main.style.marginLeft = "0";
+    if (sidebar.classList.contains('open')) {
+        closeSidebar();
     } else {
-        sidebar.style.width = "250px";
-        main.style.marginLeft = "250px";
+        openSidebar();
     }
+}
+
+function openSidebar() {
+    const sidebar = document.getElementById("mySidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+    if (!sidebar || !overlay) return;
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+}
+
+function closeSidebar() {
+    const sidebar = document.getElementById("mySidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+    if (!sidebar || !overlay) return;
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
 }
 
 // グローバル変数として設定
 window.loadSidebar = loadSidebar;
 window.toggleSidebar = toggleSidebar;
+window.closeSidebar = closeSidebar;
 window.showModeChangeModal = showModeChangeModal; // モーダルを表示する関数もグローバル登録
 window.closeModeModal = closeModeModal; // モーダルを閉じる関数もグローバル登録
 window.applyModeChange = applyModeChange; // モード変更を適用する関数もグローバル登録
