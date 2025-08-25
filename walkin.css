@@ -71,3 +71,58 @@
   color: #666;
   margin-top: 15px;
 }
+
+/* Walk-in quantity selector */
+.walkin-qty-row {
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.walkin-qty-label {
+  font-size: 18px;
+}
+
+.walkin-qty {
+  display: inline-flex;
+  align-items: stretch;
+  border: 2px solid #28a745;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.qty-btn {
+  background: #28a745;
+  color: #fff;
+  border: none;
+  width: 56px;
+  min-height: 56px;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.qty-btn:active {
+  filter: brightness(0.9);
+}
+
+.qty-input {
+  width: 92px;
+  text-align: center;
+  font-size: 24px;
+  border: none;
+  outline: none;
+}
+
+/* Remove spinners on number input for better UX */
+input.qty-input::-webkit-outer-spin-button,
+input.qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input.qty-input[type=number] {
+  -moz-appearance: textfield;
+}

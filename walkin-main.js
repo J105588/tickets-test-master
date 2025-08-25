@@ -26,6 +26,40 @@ window.onload = () => {
   
   // 当日券モードのアクセス制限をチェック
   checkWalkinModeAccess();
+
+  // 枚数 +/- ボタンイベント
+  const input = document.getElementById('walkin-count');
+  const decBtn = document.getElementById('qty-decrease');
+  const incBtn = document.getElementById('qty-increase');
+  const min = parseInt(input?.getAttribute('min') || '1', 10);
+  const max = parseInt(input?.getAttribute('max') || '6', 10);
+
+  const clamp = (v) => Math.max(min, Math.min(max, v));
+
+  if (decBtn && input) {
+    decBtn.addEventListener('click', () => {
+      const current = parseInt(input.value || '1', 10) || 1;
+      input.value = String(clamp(current - 1));
+      input.dispatchEvent(new Event('change'));
+    });
+  }
+  if (incBtn && input) {
+    incBtn.addEventListener('click', () => {
+      const current = parseInt(input.value || '1', 10) || 1;
+      input.value = String(clamp(current + 1));
+      input.dispatchEvent(new Event('change'));
+    });
+  }
+  if (input) {
+    input.addEventListener('input', () => {
+      const v = parseInt(input.value || '1', 10);
+      if (isNaN(v)) {
+        input.value = String(min);
+      } else {
+        input.value = String(clamp(v));
+      }
+    });
+  }
 };
 
 // 当日券モードのアクセス制限をチェックする関数
