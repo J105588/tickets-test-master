@@ -11,6 +11,8 @@ const GROUP = urlParams.get('group');
 const DAY = urlParams.get('day');
 const TIMESLOT = urlParams.get('timeslot');
 
+let _isIssuingWalkin = false;
+
 // 初期化
 window.onload = () => {
   // サイドバー読み込み
@@ -82,6 +84,10 @@ function showLoader(visible) {
 }
 
 async function issueWalkinTicket() {
+  if (_isIssuingWalkin) {
+    return;
+  }
+  _isIssuingWalkin = true;
   const walkinBtn = document.getElementById('walkin-btn');
   const reservationResult = document.getElementById('reservation-result');
   const reservedSeatEl = document.getElementById('reserved-seat');
@@ -158,11 +164,9 @@ async function issueWalkinTicket() {
     walkinBtn.textContent = '空席を探して当日券を発行する';
   } finally {
     showLoader(false);
+    _isIssuingWalkin = false;
   }
 }
-
-// ボタン押下時に実行されるようにイベントリスナーを追加
-document.getElementById('walkin-btn').addEventListener('click', issueWalkinTicket);
 
 // グローバル関数として設定
 window.issueWalkinTicket = issueWalkinTicket;

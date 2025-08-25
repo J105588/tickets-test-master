@@ -54,8 +54,12 @@ function closeModeModal() {
     document.getElementById("mode-change-modal").style.display = 'none';
 }
 
+let _isApplyingModeChange = false;
+
 // モード変更を適用する関数
 async function applyModeChange() {
+    if (_isApplyingModeChange) return; // 二重実行防止
+    _isApplyingModeChange = true;
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     const passwordInput = document.getElementById("mode-password");
     const password = passwordInput.value;
@@ -66,6 +70,18 @@ async function applyModeChange() {
             selectedMode = radio.value;
         }
     });
+
+    const disableModal = (disabled) => {
+        try {
+            const primary = document.querySelector('.modal-buttons .btn-primary');
+            const secondary = document.querySelector('.modal-buttons .btn-secondary');
+            if (primary) primary.disabled = disabled;
+            if (secondary) secondary.disabled = disabled;
+            if (passwordInput) passwordInput.disabled = disabled;
+        } catch (_) {}
+    };
+
+    disableModal(true);
 
     try {
         // 通常モードに戻る場合はパスワード検証をスキップ
@@ -105,6 +121,9 @@ async function applyModeChange() {
         }
     } catch (error) {
         alert(`エラーが発生しました: ${error.message}`);
+    } finally {
+        disableModal(false);
+        _isApplyingModeChange = false;
     }
 }
 
