@@ -170,9 +170,9 @@
 ## 図解
 アーキテクチャ（概念）
 ```mermaid
-flowchart LR
-  A["Browser: HTML/CSS/JS"] -- "JSONP <script>" --> B[("GAS Web App /exec")]
-  B -- read/write --> C[("Google Spreadsheet")]
+graph LR
+  A[Browser: HTML/CSS/JS] -->|JSONP script| B[GAS Web App /exec]
+  B -->|read/write| C[Google Spreadsheet]
   subgraph Frontend
     A
   end
@@ -184,10 +184,10 @@ flowchart LR
 
 ページ遷移
 ```mermaid
-flowchart TD
-  I["index.html 組選択"] --> T["timeslot.html 時間帯選択"]
-  T -->|通常| S["seats.html 座席表示/予約"]
-  T -->|当日券| W["walkin.html 当日券発行"]
+graph TD
+  I[index.html 組選択] --> T[timeslot.html 時間帯選択]
+  T -->|通常| S[seats.html 座席表示/予約]
+  T -->|当日券| W[walkin.html 当日券発行]
   S -->|管理者| S
 ```
 
