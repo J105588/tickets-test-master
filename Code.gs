@@ -45,7 +45,8 @@ function doPost(e) {
       'assignWalkInSeats': assignWalkInSeats,
       'verifyModePassword': verifyModePassword,
       'getAllTimeslotsForGroup': getAllTimeslotsForGroup,
-      'testApi': testApi
+      'testApi': testApi,
+      'reportError': reportError
     };
 
     if (functionMap[funcName]) {
@@ -102,7 +103,8 @@ function doGet(e) {
         'assignWalkInSeats': assignWalkInSeats,
         'verifyModePassword': verifyModePassword,
         'getAllTimeslotsForGroup': getAllTimeslotsForGroup,
-        'testApi': testApi
+        'testApi': testApi,
+        'reportError': reportError
       };
 
       if (functionMap[funcName]) {

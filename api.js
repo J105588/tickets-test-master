@@ -14,6 +14,7 @@ class GasAPI {
         window[callbackName] = (data) => {
           debugLog(`API Response (JSONP): ${functionName}`, data);
           try {
+            try { clearTimeout(timeoutId); } catch (e) {}
             delete window[callbackName]; // コールバック関数を削除
             if (script && script.parentNode) {
               script.parentNode.removeChild(script); // スクリプトタグを削除
