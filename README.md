@@ -138,3 +138,74 @@
 - `sidebar.js` / `sidebar.css`: サイドバーとモード切替
 - `api.js` / `config.js`: GAS API 呼び出し（JSONP）と設定
 - `Code.gs` / `TimeSlotConfig.gs` / `SpreadsheetIds.gs` / `system-setting.gs`: GAS 側ロジック
+
+---
+
+## 最近の変更点（ハイライト）
+- Walk-in（当日券）枚数選択UIを大型化（±ボタン）し、再入ガードで誤操作防止
+- 複数席割当の失敗時に単発APIへ自動フォールバック（堅牢性向上）
+- JSONP クライアント強化（タイムアウト/キャッシュバスター/成功時タイマー解除/詳細ログ/フェイルオーバーURL）
+- サイドバーをオーバーレイ表示に変更（背景暗転、外側クリック/×で閉じる）
+- モード変更（verifyModePassword）の二重送信防止（変更中はボタン/入力を無効化）
+- すべてのページに favicon を追加
+
+## 依存関係
+- ブラウザ（Chromium/Firefox/Safari/Edge）
+- Google Apps Script（Web アプリとしてデプロイ）
+- Google スプレッドシート
+- 静的ホスティング（GitHub Pages など）
+
+## 仕組み（詳細）
+- JSONP 通信: `api.js` が `<script>` を生成し、`callback` で応答を受け取ります。
+  - 15s タイムアウト、キャッシュバスター、成功時はタイマー解除
+  - 失敗時は `GAS_API_URLS` の次URLに自動フェイルオーバー
+- Walk-in 発行: `walkin-main.js`
+  - 再入防止フラグで多重実行を抑止
+  - 複数席API失敗時は単発APIを複数回呼ぶフォールバック
+- サイドバー: `sidebar.js`
+  - オーバーレイで重ね表示、背景暗転
+  - 外側クリック/×で閉じる
+  - モード変更時は二重送信防止（処理中はボタン/入力を無効化）
+
+## 図解
+アーキテクチャ（概念）
+```mermaid
+flowchart LR
+  A["Browser: HTML/CSS/JS"] -- "JSONP <script>" --> B[("GAS Web App /exec")]
+  B -- read/write --> C[("Google Spreadsheet")]
+  subgraph Frontend
+    A
+  end
+  subgraph Backend
+    B
+    C
+  end
+```
+
+ページ遷移
+```mermaid
+flowchart TD
+  I["index.html 組選択"] --> T["timeslot.html 時間帯選択"]
+  T -->|通常| S["seats.html 座席表示/予約"]
+  T -->|当日券| W["walkin.html 当日券発行"]
+  S -->|管理者| S
+```
+
+## 操作方法（補足）
+- サイドバー: 画面左上のメニューで開閉。開いている間は背景が暗転。外側クリックまたは「×」で閉じる。
+- モード変更: サイドバー内「モード変更」。処理中はボタン/入力が無効化されます。
+- 当日券発行: ± ボタンで枚数調整（1〜6）。処理中は二重実行されません。
+
+## 設定のポイント（再掲）
+- `config.js` の `GAS_API_URL` に最新の /exec URL を設定
+- 予備 URL がある場合は `GAS_API_URLS` に追加（順番に試行）
+
+## トラブルシューティング（再掲）
+- JSONP タイムアウト
+  - GAS の公開設定が「全員（匿名）」になっているか
+  - 最新の /exec を `config.js` に設定（必要に応じて `GAS_API_URLS` に追加）
+  - 疎通テスト: `https://<GAS>/exec?callback=cb&func=testApi&params=%5B%5D` を開く前に `function cb(x){console.log(x)}` を定義
+- verifyModePassword の多重呼び出し
+  - 二重送信防止済み。古いキャッシュならハードリロード
+- Walk-in の二重発行
+  - 再入防止済み。最新に更新して再試行
