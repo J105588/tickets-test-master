@@ -31,30 +31,45 @@ class GasAPI {
           }
         };
 
-        // POSTリクエストをシミュレートするためのURL構築
-        const url = `${GAS_API_URL}?callback=${callbackName}`;
-        
-        const script = document.createElement('script');
-        // POSTデータを構築してURLに追加
+        // URL 構築（キャッシュバスター付き）
+        const cacheBuster = `_=${Date.now()}`;
+        const baseUrl = `${GAS_API_URL}?callback=${callbackName}`;
         const formData = `func=${encodedFuncName}&params=${encodedParams}`;
-        script.src = `${url}&${formData}`;
+        const fullUrl = `${baseUrl}&${formData}&${cacheBuster}`;
+
+        const script = document.createElement('script');
+        script.src = fullUrl;
+        script.async = true;
         
-        script.onerror = (error) => {
-          console.error('API call error:', error);
+        let timeoutId = setTimeout(() => {
+          console.error('API call timeout:', { functionName, fullUrl });
           try {
             delete window[callbackName];
             if (script && script.parentNode) {
               script.parentNode.removeChild(script);
             }
-            this._reportError(`JSONPリクエストに失敗しました: ${error.message}`);
-            reject(new Error(`JSONPリクエストに失敗しました: ${error.message}`));
+          } catch (e) {}
+          this._reportError(`JSONPタイムアウト: ${functionName}`);
+          reject(new Error(`JSONPタイムアウト: ${functionName}`));
+        }, 15000);
+
+        script.onerror = (error) => {
+          console.error('API call error:', error, { functionName, fullUrl });
+          try {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+              script.parentNode.removeChild(script);
+            }
+            clearTimeout(timeoutId);
+            this._reportError(`JSONPリクエストに失敗しました: ${functionName}`);
+            reject(new Error(`JSONPリクエストに失敗しました: ${functionName}`));
           } catch (e) {
             console.error('API error cleanup failed:', e);
             reject(new Error('APIエラー処理中に例外が発生しました: ' + e.message));
           }
         };
         
-        document.body.appendChild(script);
+        (document.head || document.body || document.documentElement).appendChild(script);
       } catch (err) {
         console.error('API call exception:', err);
         this._reportError(`API呼び出し例外: ${err.message}`);
