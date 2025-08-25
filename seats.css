@@ -52,6 +52,12 @@
     font-weight: bold;
 }
 
+.error-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
 .error-content button {
     background-color: #007bff;
     color: white;
