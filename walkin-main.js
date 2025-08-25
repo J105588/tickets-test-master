@@ -99,7 +99,29 @@ async function issueWalkinTicket() {
     if (num === 1) {
       response = await GasAPI.assignWalkInSeat(GROUP, DAY, TIMESLOT);
     } else {
-      response = await GasAPI.assignWalkInSeats(GROUP, DAY, TIMESLOT, num);
+      // まずは複数席APIを試す
+      try {
+        response = await GasAPI.assignWalkInSeats(GROUP, DAY, TIMESLOT, num);
+      } catch (multiErr) {
+        console.warn('assignWalkInSeats failed, falling back to single-seat loop:', multiErr);
+        // 失敗した場合は単発APIを複数回叩いてフォールバック
+        const seats = [];
+        for (let i = 0; i < num; i++) {
+          try {
+            const r = await GasAPI.assignWalkInSeat(GROUP, DAY, TIMESLOT);
+            if (r && r.success && r.seatId) {
+              seats.push(r.seatId);
+            } else {
+              break;
+            }
+          } catch (e) {
+            break;
+          }
+        }
+        response = seats.length > 0
+          ? { success: true, seatIds: seats, message: `当日券を${seats.length}席発行しました！` }
+          : { success: false, message: '申し訳ありません、この回の座席は現在満席です。' };
+      }
     }
     
     if (response.success) {
