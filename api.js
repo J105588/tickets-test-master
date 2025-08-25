@@ -1,5 +1,5 @@
 // api.js
-import { GAS_API_URL, DEBUG_MODE, debugLog } from './config.js';
+import { GAS_API_URL, GAS_API_URLS, DEBUG_MODE, debugLog } from './config.js';
 
 class GasAPI {
   static _callApi(functionName, params = []) {
@@ -33,10 +33,11 @@ class GasAPI {
         };
 
         // URL 構築（キャッシュバスター付き）
+        const urls = Array.isArray(GAS_API_URLS) && GAS_API_URLS.length > 0 ? GAS_API_URLS : [GAS_API_URL];
         const cacheBuster = `_=${Date.now()}`;
-        const baseUrl = `${GAS_API_URL}?callback=${callbackName}`;
         const formData = `func=${encodedFuncName}&params=${encodedParams}`;
-        const fullUrl = `${baseUrl}&${formData}&${cacheBuster}`;
+        let currentUrlIndex = 0;
+        let fullUrl = `${urls[currentUrlIndex]}?callback=${callbackName}&${formData}&${cacheBuster}`;
 
         const script = document.createElement('script');
         script.src = fullUrl;
@@ -57,6 +58,15 @@ class GasAPI {
         script.onerror = (error) => {
           console.error('API call error:', error, { functionName, fullUrl });
           try {
+            // 次のURLがあればフェイルオーバー
+            if (Array.isArray(urls) && currentUrlIndex < urls.length - 1) {
+              currentUrlIndex++;
+              const nextUrl = `${urls[currentUrlIndex]}?callback=${callbackName}&${formData}&${cacheBuster}`;
+              console.warn('Failing over to next GAS url:', nextUrl);
+              script.src = nextUrl;
+              return; // タイムアウトは継続
+            }
+
             delete window[callbackName];
             if (script && script.parentNode) {
               script.parentNode.removeChild(script);
