@@ -72,7 +72,17 @@ class GasAPI {
               script.parentNode.removeChild(script);
             }
             clearTimeout(timeoutId);
-            this._reportError(`JSONPリクエストに失敗しました: ${functionName}`);
+            
+            // より詳細なエラー情報を提供
+            const errorDetails = {
+              functionName,
+              fullUrl,
+              errorType: 'script_error',
+              timestamp: new Date().toISOString()
+            };
+            console.error('API call failed details:', errorDetails);
+            
+            this._reportError(`JSONPリクエストに失敗しました: ${functionName} (詳細: ${JSON.stringify(errorDetails)})`);
             reject(new Error(`JSONPリクエストに失敗しました: ${functionName}`));
           } catch (e) {
             console.error('API error cleanup failed:', e);
@@ -110,7 +120,7 @@ class GasAPI {
       console.error('エラー表示に失敗しました:', e);
     }
     
-    // エラー報告APIを呼び出す
+    // エラー報告APIを呼び出す（ただし、エラーが発生している場合はスキップ）
     try {
       const callbackName = 'jsonpCallback_reportError_' + Date.now();
       const script = document.createElement('script');
@@ -183,6 +193,19 @@ class GasAPI {
   static async updateSeatData(group, day, timeslot, seatId, columnC, columnD, columnE) {
     const response = await this._callApi('updateSeatData', [group, day, timeslot, seatId, columnC, columnD, columnE]);
     return response;
+  }
+
+  // GASの疎通テスト用関数
+  static async testGASConnection() {
+    try {
+      console.log('GAS疎通テスト開始...');
+      const response = await this._callApi('testApi');
+      console.log('GAS疎通テスト成功:', response);
+      return { success: true, data: response };
+    } catch (error) {
+      console.error('GAS疎通テスト失敗:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

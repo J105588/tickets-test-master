@@ -9,6 +9,9 @@ const sidebarHTML = `
       <div class="current-mode">現在: <span id="current-mode-display">通常モード</span></div>
       <button class="change-mode-btn" onclick="showModeChangeModal()">モード変更</button>
     </div>
+    <div class="debug-section">
+      <button class="debug-btn" onclick="testGASConnection()">GAS疎通テスト</button>
+    </div>
   </div>
   <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
   <div id="mode-change-modal" class="modal" style="display: none;">
@@ -188,5 +191,19 @@ window.closeSidebar = closeSidebar;
 window.showModeChangeModal = showModeChangeModal; // モーダルを表示する関数もグローバル登録
 window.closeModeModal = closeModeModal; // モーダルを閉じる関数もグローバル登録
 window.applyModeChange = applyModeChange; // モード変更を適用する関数もグローバル登録
+
+// GAS疎通テスト関数をグローバルに登録
+window.testGASConnection = async function() {
+  try {
+    const result = await GasAPI.testGASConnection();
+    if (result.success) {
+      alert('GAS疎通テスト成功！\n\nAPI応答: ' + JSON.stringify(result.data, null, 2));
+    } else {
+      alert('GAS疎通テスト失敗！\n\nエラー: ' + result.error);
+    }
+  } catch (error) {
+    alert('GAS疎通テストでエラーが発生しました！\n\nエラー: ' + error.message);
+  }
+};
 
 export { loadSidebar, toggleSidebar, showModeChangeModal, closeModeModal, applyModeChange };

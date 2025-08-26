@@ -95,6 +95,27 @@
   background-color: #0056b3;
 }
 
+.debug-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #444;
+}
+
+.debug-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.debug-btn:hover {
+  background-color: #545b62;
+}
+
 .mode-options {
   display: flex;
   flex-direction: column;
