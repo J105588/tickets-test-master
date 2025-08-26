@@ -73,9 +73,10 @@ window.onload = async () => {
     // 現在のモードを取得して管理者権限を判定
     const currentMode = localStorage.getItem('currentMode') || 'normal';
     const isAdminMode = currentMode === 'admin' || IS_ADMIN;
+    const isSuperAdminMode = currentMode === 'superadmin';
     
-    console.log('GasAPI.getSeatData呼び出し:', { GROUP, DAY, TIMESLOT, isAdminMode });
-    const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode);
+    console.log('GasAPI.getSeatData呼び出し:', { GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode });
+    const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
     
     // 詳細なデバッグ情報をコンソールに出力
     console.log("===== 座席データ詳細情報 =====");
@@ -213,8 +214,9 @@ function startAutoRefresh() {
         // 現在のモードを取得して管理者権限を判定
         const currentMode = localStorage.getItem('currentMode') || 'normal';
         const isAdminMode = currentMode === 'admin' || IS_ADMIN;
+        const isSuperAdminMode = currentMode === 'superadmin';
         
-        const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode);
+        const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
         
         if (seatData.success) {
           drawSeatMap(seatData.seatMap);
@@ -294,22 +296,12 @@ function createSeatElement(seatData) {
     seat.appendChild(nameEl);
   }
   
-  // 最高管理者モードではC、D、E列の情報も表示
-  if (currentMode === 'superadmin') {
-    const infoEl = document.createElement('div');
-    infoEl.className = 'seat-info';
-    infoEl.style.fontSize = '10px';
-    infoEl.style.color = '#666';
-    
-    let infoText = '';
-    if (seatData.columnC) infoText += `C:${seatData.columnC} `;
-    if (seatData.columnD) infoText += `D:${seatData.columnD} `;
-    if (seatData.columnE) infoText += `E:${seatData.columnE}`;
-    
-    if (infoText.trim()) {
-      infoEl.textContent = infoText.trim();
-      seat.appendChild(infoEl);
-    }
+  // 最高管理者モードでは名前のみを表示（C、D、E列の詳細はモーダルで表示）
+  if (currentMode === 'superadmin' && seatData.name) {
+    const nameEl = document.createElement('div');
+    nameEl.className = 'seat-name';
+    nameEl.textContent = seatData.name;
+    seat.appendChild(nameEl);
   }
   
   seat.addEventListener('click', () => handleSeatClick(seatData));
@@ -466,8 +458,9 @@ async function manualRefresh() {
   try {
     const currentMode = localStorage.getItem('currentMode') || 'normal';
     const isAdminMode = currentMode === 'admin' || IS_ADMIN;
+    const isSuperAdminMode = currentMode === 'superadmin';
     
-    const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode);
+    const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
     
     if (seatData.success) {
       drawSeatMap(seatData.seatMap);
@@ -555,7 +548,8 @@ async function checkInSelected() {
       // 座席データを再読み込み
       const currentMode = localStorage.getItem('currentMode') || 'normal';
       const isAdminMode = currentMode === 'admin' || IS_ADMIN;
-      const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode);
+      const isSuperAdminMode = currentMode === 'superadmin';
+      const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
       
       if (seatData.success) {
         drawSeatMap(seatData.seatMap);
@@ -601,7 +595,8 @@ async function confirmReservation() {
       // 座席データを再読み込み
       const currentMode = localStorage.getItem('currentMode') || 'normal';
       const isAdminMode = currentMode === 'admin' || IS_ADMIN;
-      const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode);
+      const isSuperAdminMode = currentMode === 'superadmin';
+      const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
       
       if (seatData.success) {
         drawSeatMap(seatData.seatMap);
@@ -653,16 +648,16 @@ function showSeatEditModal(seatData) {
         <h3>座席データ編集 - ${seatData.id}</h3>
         <div class="seat-edit-form">
           <div class="form-group">
-            <label for="column-c">C列の内容:</label>
-            <input type="text" id="column-c" value="${seatData.columnC || ''}" placeholder="C列の内容を入力">
+            <label for="column-c">C列: ステータス（空、確保、予約済など）</label>
+            <input type="text" id="column-c" value="${seatData.columnC || ''}" placeholder="例: 予約済">
           </div>
           <div class="form-group">
-            <label for="column-d">D列の内容:</label>
-            <input type="text" id="column-d" value="${seatData.columnD || ''}" placeholder="D列の内容を入力">
+            <label for="column-d">D列: 予約名・備考</label>
+            <input type="text" id="column-d" value="${seatData.columnD || ''}" placeholder="例: 田中太郎">
           </div>
           <div class="form-group">
-            <label for="column-e">E列の内容:</label>
-            <input type="text" id="column-e" value="${seatData.columnE || ''}" placeholder="E列の内容を入力">
+            <label for="column-e">E列: チェックイン状態・その他</label>
+            <input type="text" id="column-e" value="${seatData.columnE || ''}" placeholder="例: 済">
           </div>
         </div>
         <div class="modal-buttons">
@@ -710,7 +705,8 @@ async function updateSeatData(seatId) {
       // 座席データを再読み込み
       const currentMode = localStorage.getItem('currentMode') || 'normal';
       const isAdminMode = currentMode === 'admin' || IS_ADMIN;
-      const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode);
+      const isSuperAdminMode = currentMode === 'superadmin';
+      const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
       
       if (seatData.success) {
         drawSeatMap(seatData.seatMap);

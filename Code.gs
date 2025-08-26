@@ -133,7 +133,7 @@ function doGet(e) {
 /**
  * 指定された公演の座席データを全て取得する。
  */
-function getSeatData(group, day, timeslot, isAdmin = false) {
+function getSeatData(group, day, timeslot, isAdmin = false, isSuperAdmin = false) {
   try {
     const sheet = getSheet(group, day, timeslot, 'SEAT');
     if (!sheet) throw new Error("対象の座席シートが見つかりません。");
@@ -171,7 +171,7 @@ function getSeatData(group, day, timeslot, isAdmin = false) {
         seat.status = 'reserved';
       }
 
-      if (isAdmin) {
+      if (isAdmin || isSuperAdmin) {
         seat.name = nameD || null;
       }
       seatMap[seatId] = seat;
@@ -481,8 +481,18 @@ function updateSeatData(group, day, timeslot, seatId, columnC, columnD, columnE)
         const data = sheet.getDataRange().getValues();
         let targetRow = -1;
         
+        // 座席IDを分解（例：C8 → rowLabel: C, colLabel: 8）
+        const match = seatId.match(/^([A-E])(\d+)$/);
+        if (!match) {
+          return { success: false, message: '無効な座席IDです' };
+        }
+        
+        const rowLabel = match[1];
+        const colLabel = match[2];
+        
         for (let i = 0; i < data.length; i++) {
-          if (data[i][0] === seatId) { // A列（座席ID）
+          // A列に行ラベル、B列に列番号が入っている
+          if (data[i][0] === rowLabel && String(data[i][1]) === colLabel) {
             targetRow = i + 1; // スプレッドシートの行番号は1から始まる
             break;
           }
