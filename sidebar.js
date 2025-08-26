@@ -27,6 +27,10 @@ const sidebarHTML = `
           <input type="radio" name="mode" value="walkin"> 
           <span>当日券モード</span>
         </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="superadmin"> 
+          <span>最高管理者モード</span>
+        </label>
       </div>
       <div class="password-section">
         <input type="password" id="mode-password" placeholder="パスワード">
@@ -111,6 +115,7 @@ async function applyModeChange() {
             let modeText = '通常モード';
             if (selectedMode === 'admin') modeText = '管理者モード';
             if (selectedMode === 'walkin') modeText = '当日券モード';
+            if (selectedMode === 'superadmin') modeText = '最高管理者モード';
             
             alert(`${modeText}に切り替えました`);
             closeModeModal(); // モーダルを閉じる
@@ -139,6 +144,8 @@ function updateModeDisplay() {
             displayText = '管理者モード';
         } else if (currentMode === 'walkin') {
             displayText = '当日券モード';
+        } else if (currentMode === 'superadmin') {
+            displayText = '最高管理者モード';
         }
         
         modeDisplay.textContent = displayText;

@@ -44,6 +44,7 @@ function doPost(e) {
       'assignWalkInSeat': assignWalkInSeat,
       'assignWalkInSeats': assignWalkInSeats,
       'verifyModePassword': verifyModePassword,
+      'updateSeatData': updateSeatData,
       'getAllTimeslotsForGroup': getAllTimeslotsForGroup,
       'testApi': testApi,
       'reportError': reportError
@@ -102,6 +103,7 @@ function doGet(e) {
         'assignWalkInSeat': assignWalkInSeat,
         'assignWalkInSeats': assignWalkInSeats,
         'verifyModePassword': verifyModePassword,
+        'updateSeatData': updateSeatData,
         'getAllTimeslotsForGroup': getAllTimeslotsForGroup,
         'testApi': testApi,
         'reportError': reportError
@@ -161,7 +163,7 @@ function getSeatData(group, day, timeslot, isAdmin = false) {
       const nameD = row[3];
       const checkinE = row[4];
 
-      const seat = { id: seatId, status: 'available', name: null };
+      const seat = { id: seatId, status: 'available', name: null, columnC: statusC, columnD: nameD, columnE: checkinE };
 
       if (statusC === '予約済') {
         seat.status = (checkinE === '済') ? 'checked-in' : 'to-be-checked-in';
@@ -449,14 +451,68 @@ function verifyModePassword(mode, password) {
     const props = PropertiesService.getScriptProperties();
     const adminPassword = props.getProperty('ADMIN_PASSWORD');
     const walkinPassword = props.getProperty('WALKIN_PASSWORD');
+    const superAdminPassword = props.getProperty('SUPERADMIN_PASSWORD');
 
     if (mode === 'admin') return { success: adminPassword && password === adminPassword };
     if (mode === 'walkin') return { success: walkinPassword && password === walkinPassword };
+    if (mode === 'superadmin') return { success: superAdminPassword && password === superAdminPassword };
     return { success: false };
 
   } catch (e) {
     Logger.log("verifyModePassword Error: " + e.message);
     return { success: false };
+  }
+}
+
+/**
+ * 最高管理者モードで座席データを更新する。
+ */
+function updateSeatData(group, day, timeslot, seatId, columnC, columnD, columnE) {
+  try {
+    const lock = LockService.getScriptLock();
+    if (lock.tryLock(10000)) {
+      try {
+        const sheet = getSheet(group, day, timeslot, 'SEAT');
+        if (!sheet) {
+          return { success: false, message: 'シートが見つかりません' };
+        }
+
+        // 座席IDから行番号を特定
+        const data = sheet.getDataRange().getValues();
+        let targetRow = -1;
+        
+        for (let i = 0; i < data.length; i++) {
+          if (data[i][0] === seatId) { // A列（座席ID）
+            targetRow = i + 1; // スプレッドシートの行番号は1から始まる
+            break;
+          }
+        }
+        
+        if (targetRow === -1) {
+          return { success: false, message: '指定された座席が見つかりません' };
+        }
+
+        // C、D、E列のデータを更新
+        if (columnC !== undefined) {
+          sheet.getRange(targetRow, 3).setValue(columnC); // C列
+        }
+        if (columnD !== undefined) {
+          sheet.getRange(targetRow, 4).setValue(columnD); // D列
+        }
+        if (columnE !== undefined) {
+          sheet.getRange(targetRow, 5).setValue(columnE); // E列
+        }
+
+        return { success: true, message: '座席データを更新しました' };
+      } finally {
+        lock.releaseLock();
+      }
+    } else {
+      return { success: false, message: "処理が混み合っています。しばらくしてから再度お試しください。" };
+    }
+  } catch (e) {
+    Logger.log(`updateSeatData Error: ${e.message}\n${e.stack}`);
+    return { success: false, message: `エラーが発生しました: ${e.message}` };
   }
 }
 

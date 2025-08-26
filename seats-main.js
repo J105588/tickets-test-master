@@ -38,20 +38,30 @@ window.onload = async () => {
   // 現在のモードを取得
   const currentMode = localStorage.getItem('currentMode') || 'normal';
   const isAdminMode = currentMode === 'admin' || IS_ADMIN;
+  const isSuperAdminMode = currentMode === 'superadmin';
 
   // 管理者モードの表示制御
   const adminIndicator = document.getElementById('admin-indicator');
+  const superAdminIndicator = document.getElementById('superadmin-indicator');
   const adminLoginBtn = document.getElementById('admin-login-btn');
   const submitButton = document.getElementById('submit-button');
   const checkInSelectedBtn = document.getElementById('check-in-selected-btn');
   
-  if (isAdminMode) {
+  if (isSuperAdminMode) {
+    if (superAdminIndicator) superAdminIndicator.style.display = 'block';
+    if (adminIndicator) adminIndicator.style.display = 'none';
+    if (adminLoginBtn) adminLoginBtn.style.display = 'none';
+    if (submitButton) submitButton.style.display = 'none';
+    if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
+  } else if (isAdminMode) {
     if (adminIndicator) adminIndicator.style.display = 'block';
+    if (superAdminIndicator) superAdminIndicator.style.display = 'none';
     if (adminLoginBtn) adminLoginBtn.style.display = 'none';
     if (submitButton) submitButton.style.display = 'none';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'block';
   } else {
     if (adminIndicator) adminIndicator.style.display = 'none';
+    if (superAdminIndicator) superAdminIndicator.style.display = 'none';
     if (adminLoginBtn) adminLoginBtn.style.display = 'block';
     if (submitButton) submitButton.style.display = 'block';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
@@ -257,6 +267,17 @@ function createSeatElement(seatData) {
     seat.dataset.seatName = seatData.name || '';
   }
   
+  // 最高管理者モード用にC、D、E列のデータを保存
+  if (seatData.columnC !== undefined) {
+    seat.dataset.columnC = seatData.columnC;
+  }
+  if (seatData.columnD !== undefined) {
+    seat.dataset.columnD = seatData.columnD;
+  }
+  if (seatData.columnE !== undefined) {
+    seat.dataset.columnE = seatData.columnE;
+  }
+  
   // 名前を表示（長い場合は省略）
   if (seatData.name && seatData.status !== 'available') {
     const nameEl = document.createElement('div');
@@ -273,6 +294,24 @@ function createSeatElement(seatData) {
     seat.appendChild(nameEl);
   }
   
+  // 最高管理者モードではC、D、E列の情報も表示
+  if (currentMode === 'superadmin') {
+    const infoEl = document.createElement('div');
+    infoEl.className = 'seat-info';
+    infoEl.style.fontSize = '10px';
+    infoEl.style.color = '#666';
+    
+    let infoText = '';
+    if (seatData.columnC) infoText += `C:${seatData.columnC} `;
+    if (seatData.columnD) infoText += `D:${seatData.columnD} `;
+    if (seatData.columnE) infoText += `E:${seatData.columnE}`;
+    
+    if (infoText.trim()) {
+      infoEl.textContent = infoText.trim();
+      seat.appendChild(infoEl);
+    }
+  }
+  
   seat.addEventListener('click', () => handleSeatClick(seatData));
   return seat;
 }
@@ -281,14 +320,24 @@ function createSeatElement(seatData) {
 function handleSeatClick(seatData) {
   const currentMode = localStorage.getItem('currentMode') || 'normal';
   const isAdminMode = currentMode === 'admin' || IS_ADMIN;
+  const isSuperAdminMode = currentMode === 'superadmin';
   
-  if (isAdminMode) {
+  if (isSuperAdminMode) {
+    // 最高管理者モード：座席データ編集
+    handleSuperAdminSeatClick(seatData);
+  } else if (isAdminMode) {
     // 管理者モード：チェックイン可能な座席を選択
     handleAdminSeatClick(seatData);
   } else {
     // 通常モード：予約可能な座席を選択
     handleNormalSeatClick(seatData);
   }
+}
+
+// 最高管理者モードでの座席クリック処理
+function handleSuperAdminSeatClick(seatData) {
+  // 任意の座席を選択可能
+  showSeatEditModal(seatData);
 }
 
 // 管理者モードでの座席クリック処理
@@ -381,6 +430,9 @@ window.closeModeModal = closeModeModal;
 window.applyModeChange = applyModeChange;
 window.startUserInteraction = startUserInteraction;
 window.endUserInteraction = endUserInteraction;
+window.showSeatEditModal = showSeatEditModal;
+window.closeSeatEditModal = closeSeatEditModal;
+window.updateSeatData = updateSeatData;
 
 // 自動更新設定メニューの表示制御
 function toggleAutoRefreshSettings() {
@@ -590,6 +642,89 @@ function startUserInteraction() {
   
   // 操作中は自動更新を停止
   stopAutoRefresh();
+}
+
+// 座席編集モーダルを表示する関数
+function showSeatEditModal(seatData) {
+  // モーダルのHTMLを作成
+  const modalHTML = `
+    <div id="seat-edit-modal" class="modal" style="display: block;">
+      <div class="modal-content" style="max-width: 500px;">
+        <h3>座席データ編集 - ${seatData.id}</h3>
+        <div class="seat-edit-form">
+          <div class="form-group">
+            <label for="column-c">C列の内容:</label>
+            <input type="text" id="column-c" value="${seatData.columnC || ''}" placeholder="C列の内容を入力">
+          </div>
+          <div class="form-group">
+            <label for="column-d">D列の内容:</label>
+            <input type="text" id="column-d" value="${seatData.columnD || ''}" placeholder="D列の内容を入力">
+          </div>
+          <div class="form-group">
+            <label for="column-e">E列の内容:</label>
+            <input type="text" id="column-e" value="${seatData.columnE || ''}" placeholder="E列の内容を入力">
+          </div>
+        </div>
+        <div class="modal-buttons">
+          <button class="btn-primary" onclick="updateSeatData('${seatData.id}')">確定</button>
+          <button class="btn-secondary" onclick="closeSeatEditModal()">キャンセル</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // モーダルを表示
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// 座席編集モーダルを閉じる関数
+function closeSeatEditModal() {
+  const modal = document.getElementById('seat-edit-modal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+// 座席データを更新する関数
+async function updateSeatData(seatId) {
+  const columnC = document.getElementById('column-c').value;
+  const columnD = document.getElementById('column-d').value;
+  const columnE = document.getElementById('column-e').value;
+  
+  // 確認ダイアログを表示
+  const confirmMessage = `座席 ${seatId} のデータを以下の内容で更新しますか？\n\nC列: ${columnC}\nD列: ${columnD}\nE列: ${columnE}`;
+  
+  if (!confirm(confirmMessage)) {
+    return;
+  }
+  
+  showLoader(true);
+  
+  try {
+    const response = await GasAPI.updateSeatData(GROUP, DAY, TIMESLOT, seatId, columnC, columnD, columnE);
+    
+    if (response.success) {
+      alert('座席データを更新しました！');
+      closeSeatEditModal();
+      
+      // 座席データを再読み込み
+      const currentMode = localStorage.getItem('currentMode') || 'normal';
+      const isAdminMode = currentMode === 'admin' || IS_ADMIN;
+      const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode);
+      
+      if (seatData.success) {
+        drawSeatMap(seatData.seatMap);
+        updateLastUpdateTime();
+      }
+    } else {
+      alert(`更新エラー：\n${response.message}`);
+    }
+  } catch (error) {
+    console.error('座席データ更新エラー:', error);
+    alert(`更新エラー：\n${error.message}`);
+  } finally {
+    showLoader(false);
+  }
 }
 
 // ユーザー操作の終了を検知

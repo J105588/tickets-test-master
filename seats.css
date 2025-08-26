@@ -470,6 +470,22 @@ input:checked+.slider:before {
     font-weight: bold;
 }
 
+.superadmin-mode-indicator {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    color: #8B0000; /* 濃い赤色 */
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.seat-info {
+    margin-top: 2px;
+    text-align: center;
+    word-break: break-all;
+    line-height: 1.2;
+}
+
 .check-in-checkbox {
     position: absolute;
     top: 5px;
@@ -559,4 +575,67 @@ input:checked+.slider:before {
 
 .auto-refresh-overlay.show {
     display: block;
+}
+
+/* 座席編集モーダルのスタイル */
+.seat-edit-form {
+    margin: 20px 0;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
 }
