@@ -9,10 +9,9 @@ const sidebarHTML = `
       <div class="current-mode">現在: <span id="current-mode-display">通常モード</span></div>
       <button class="change-mode-btn" onclick="showModeChangeModal()">モード変更</button>
     </div>
-  </div>
-  <div class="debug-section">
-    <button class="debug-btn" onclick="testGASConnection()">GAS疎通テスト</button>
-  </div>
+    <div class="debug-section">
+      <button class="debug-btn" onclick="testGASConnection()">GAS疎通テスト</button>
+    </div>
   </div>
   <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
   <div id="mode-change-modal" class="modal" style="display: none;">
