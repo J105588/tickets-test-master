@@ -280,7 +280,7 @@ function createSeatElement(seatData) {
     seat.dataset.columnE = seatData.columnE;
   }
   
-  // 名前を表示（長い場合は省略）
+  // 名前を表示（管理者モードと最高管理者モードで同じ表示）
   if (seatData.name && seatData.status !== 'available') {
     const nameEl = document.createElement('div');
     nameEl.className = 'seat-name';
@@ -293,14 +293,6 @@ function createSeatElement(seatData) {
       nameEl.textContent = seatData.name;
     }
     
-    seat.appendChild(nameEl);
-  }
-  
-  // 最高管理者モードでは名前のみを表示（C、D、E列の詳細はモーダルで表示）
-  if (currentMode === 'superadmin' && seatData.name) {
-    const nameEl = document.createElement('div');
-    nameEl.className = 'seat-name';
-    nameEl.textContent = seatData.name;
     seat.appendChild(nameEl);
   }
   
@@ -329,6 +321,26 @@ function handleSeatClick(seatData) {
 // 最高管理者モードでの座席クリック処理
 function handleSuperAdminSeatClick(seatData) {
   // 任意の座席を選択可能
+  const seatElement = document.querySelector(`[data-id="${seatData.id}"]`);
+  if (!seatElement) return;
+
+  // ユーザー操作開始
+  startUserInteraction();
+
+  // 座席の選択状態を切り替え（編集用）
+  if (seatElement.classList.contains('selected-for-edit')) {
+    // 選択解除
+    seatElement.classList.remove('selected-for-edit');
+  } else {
+    // 選択
+    // 他の座席の選択をクリア
+    document.querySelectorAll('.seat.selected-for-edit').forEach(seat => {
+      seat.classList.remove('selected-for-edit');
+    });
+    seatElement.classList.add('selected-for-edit');
+  }
+
+  // 編集モーダルを表示
   showSeatEditModal(seatData);
 }
 
@@ -678,6 +690,11 @@ function closeSeatEditModal() {
   if (modal) {
     modal.remove();
   }
+  
+  // 最高管理者モードの座席選択状態をクリア
+  document.querySelectorAll('.seat.selected-for-edit').forEach(seat => {
+    seat.classList.remove('selected-for-edit');
+  });
 }
 
 // 座席データを更新する関数
@@ -701,6 +718,11 @@ async function updateSeatData(seatId) {
     if (response.success) {
       alert('座席データを更新しました！');
       closeSeatEditModal();
+      
+      // 最高管理者モードの座席選択状態をクリア
+      document.querySelectorAll('.seat.selected-for-edit').forEach(seat => {
+        seat.classList.remove('selected-for-edit');
+      });
       
       // 座席データを再読み込み
       const currentMode = localStorage.getItem('currentMode') || 'normal';

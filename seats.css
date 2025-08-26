@@ -398,6 +398,14 @@ input:checked+.slider:before {
     transform: translateY(-2px);
 }
 
+.seat.selected-for-edit {
+    background: #8B0000; /* 最高管理者編集選択中 */
+    color: #fff;
+    box-shadow: 0 0 12px 2px #8B0000;
+    transform: translateY(-2px);
+    border: 2px solid #fff;
+}
+
 .seat.checkin-selectable {
     cursor: pointer;
     border: 2px solid #17a2b8;
