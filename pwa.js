@@ -11,6 +11,54 @@ class PWA {
     this.setupEventListeners();
     this.checkInstallability();
     this.updateOnlineStatus();
+    // ロック状態の定期監視（コンソール指令で制御）
+    this.startSystemLockWatcher();
+  }
+
+  async startSystemLockWatcher() {
+    try {
+      const { default: GasAPI } = await import('./api.js');
+      const ensureGate = () => {
+        if (!document.getElementById('system-lock-gate')) {
+          const gate = document.createElement('div');
+          gate.id = 'system-lock-gate';
+          gate.style.position = 'fixed';
+          gate.style.inset = '0';
+          gate.style.zIndex = '99999';
+          gate.style.background = 'rgba(0,0,0,0.85)';
+          gate.style.display = 'flex';
+          gate.style.alignItems = 'center';
+          gate.style.justifyContent = 'center';
+          gate.style.pointerEvents = 'all';
+          gate.innerHTML = '<div style="background:#fff;padding:24px;border-radius:8px;max-width:360px;width:90%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.3)"><h3 style="margin:0 0 12px 0;">システムはロックされています</h3><p style="margin:0 0 16px 0;color:#555;font-size:14px;">アクセスには最高管理者パスワードが必要です。</p></div>';
+          document.body.appendChild(gate);
+        }
+      };
+
+      const tick = async () => {
+        try {
+          const status = await GasAPI.getSystemLock();
+          if (status && status.success && status.locked) {
+            ensureGate();
+          } else {
+            const gate = document.getElementById('system-lock-gate');
+            if (gate) gate.remove();
+          }
+        } catch (_) {}
+      };
+
+      await tick();
+      setInterval(tick, 15000);
+
+      const observer = new MutationObserver(() => {
+        GasAPI.getSystemLock().then((s) => {
+          if (s && s.success && s.locked && !document.getElementById('system-lock-gate')) {
+            ensureGate();
+          }
+        });
+      });
+      observer.observe(document.body, { childList: true });
+    } catch (_) {}
   }
 
   // Service Workerの登録
@@ -145,12 +193,12 @@ class PWA {
     indicator.id = 'online-status';
     indicator.className = this.isOnline ? 'online' : 'offline';
     indicator.textContent = this.isOnline ? 'オンライン' : 'オフライン';
-    
-    // ヘッダーに追加
-    const header = document.querySelector('.page-header');
-    if (header) {
-      header.appendChild(indicator);
-    }
+    // 右下に固定表示
+    indicator.style.position = 'fixed';
+    indicator.style.right = '20px';
+    indicator.style.bottom = '20px';
+    indicator.style.zIndex = '1000';
+    document.body.appendChild(indicator);
   }
 
   // 更新通知の表示

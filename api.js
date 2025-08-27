@@ -99,6 +99,14 @@ class GasAPI {
     });
   }
 
+  static getSystemLock() {
+    return this._callApi('getSystemLock', []);
+  }
+
+  static setSystemLock(shouldLock, password) {
+    return this._callApi('setSystemLock', [shouldLock === true, password || '']);
+  }
+
   static _reportError(errorMessage) {
     // エラー詳細をコンソールに出力
     console.error('API Error Details:', {
@@ -210,3 +218,17 @@ class GasAPI {
 }
 
 export default GasAPI;
+
+// 安全なコンソールコマンド（最高管理者パスワードが必要）
+if (typeof window !== 'undefined') {
+  window.SeatApp = window.SeatApp || {};
+  window.SeatApp.lock = async (password) => {
+    if (!password) { console.warn('SeatApp.lock requires superadmin password'); return; }
+    return GasAPI.setSystemLock(true, password);
+  };
+  window.SeatApp.unlock = async (password) => {
+    if (!password) { console.warn('SeatApp.unlock requires superadmin password'); return; }
+    return GasAPI.setSystemLock(false, password);
+  };
+  window.SeatApp.status = async () => GasAPI.getSystemLock();
+}

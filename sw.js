@@ -50,21 +50,28 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   console.log('Service Worker: Activating...');
   event.waitUntil(
-    caches.keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== STATIC_CACHE_NAME && cacheName !== DYNAMIC_CACHE_NAME) {
-              console.log('Service Worker: Deleting old cache', cacheName);
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-      .then(() => {
-        console.log('Service Worker: Activated');
-        return self.clients.claim();
-      })
+    (async () => {
+      // Clean old caches
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== STATIC_CACHE_NAME && cacheName !== DYNAMIC_CACHE_NAME) {
+            console.log('Service Worker: Deleting old cache', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+
+      // Enable navigation preload for faster first byte
+      if (self.registration.navigationPreload) {
+        try {
+          await self.registration.navigationPreload.enable();
+        } catch (_) {}
+      }
+
+      console.log('Service Worker: Activated');
+      await self.clients.claim();
+    })()
   );
 });
 
@@ -75,28 +82,12 @@ self.addEventListener('fetch', (event) => {
 
   // GAS APIの場合はネットワークファースト
   if (url.hostname === 'script.google.com') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // 成功した場合はキャッシュに保存
-          if (response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(DYNAMIC_CACHE_NAME)
-              .then((cache) => {
-                cache.put(request, responseClone);
-              });
-          }
-          return response;
-        })
-        .catch(() => {
-          // ネットワークエラーの場合はキャッシュから取得
-          return caches.match(request);
-        })
-    );
+    // Never cache API responses to avoid stale data and reduce cache churn
+    event.respondWith(fetch(request).catch(() => caches.match('/offline.html')));
     return;
   }
 
-  // 静的ファイルの場合はキャッシュファースト
+  // 静的アセット: キャッシュファースト
   if (request.method === 'GET' && request.destination !== 'document') {
     event.respondWith(
       caches.match(request)
@@ -108,10 +99,15 @@ self.addEventListener('fetch', (event) => {
             .then((fetchResponse) => {
               if (fetchResponse.status === 200) {
                 const responseClone = fetchResponse.clone();
-                caches.open(DYNAMIC_CACHE_NAME)
-                  .then((cache) => {
-                    cache.put(request, responseClone);
-                  });
+                caches.open(DYNAMIC_CACHE_NAME).then(async (cache) => {
+                  await cache.put(request, responseClone);
+                  // Trim dynamic cache
+                  const keys = await cache.keys();
+                  const MAX_ENTRIES = 60;
+                  if (keys.length > MAX_ENTRIES) {
+                    await cache.delete(keys[0]);
+                  }
+                });
               }
               return fetchResponse;
             });
@@ -120,23 +116,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTMLファイルの場合はネットワークファースト
+  // HTMLナビゲーション: stale-while-revalidate (serve cache, update in background)
   if (request.destination === 'document') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(DYNAMIC_CACHE_NAME)
-              .then((cache) => {
-                cache.put(request, responseClone);
-              });
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request);
-        })
+      (async () => {
+        const preload = event.preloadResponse ? await event.preloadResponse : null;
+        const cache = await caches.open(DYNAMIC_CACHE_NAME);
+        const cached = await caches.match(request);
+        const networkPromise = fetch(request)
+          .then(async (response) => {
+            if (response && response.status === 200) {
+              await cache.put(request, response.clone());
+            }
+            return response;
+          })
+          .catch(() => cached || caches.match('/offline.html'));
+
+        // Prefer preload > cache > network
+        if (preload) return preload;
+        return cached || networkPromise;
+      })()
     );
     return;
   }

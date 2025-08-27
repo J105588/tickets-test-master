@@ -47,7 +47,9 @@ function doPost(e) {
       'updateSeatData': updateSeatData,
       'getAllTimeslotsForGroup': getAllTimeslotsForGroup,
       'testApi': testApi,
-      'reportError': reportError
+      'reportError': reportError,
+      'getSystemLock': getSystemLock,
+      'setSystemLock': setSystemLock
     };
 
     if (functionMap[funcName]) {
@@ -106,7 +108,9 @@ function doGet(e) {
         'updateSeatData': updateSeatData,
         'getAllTimeslotsForGroup': getAllTimeslotsForGroup,
         'testApi': testApi,
-        'reportError': reportError
+        'reportError': reportError,
+        'getSystemLock': getSystemLock,
+        'setSystemLock': setSystemLock
       };
 
       if (functionMap[funcName]) {
@@ -590,4 +594,44 @@ function testApi() {
 function reportError(errorMessage) {
   Logger.log(`Client-side error: ${errorMessage}`);
   return { success: true };
+}
+
+/**
+ * グローバルロックの状態を取得
+ */
+function getSystemLock() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const locked = props.getProperty('SYSTEM_LOCKED') === 'true';
+    const lockedAt = props.getProperty('SYSTEM_LOCKED_AT') || null;
+    return { success: true, locked, lockedAt };
+  } catch (e) {
+    Logger.log('getSystemLock Error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * グローバルロックの設定（最高管理者パスワードで認証）
+ */
+function setSystemLock(shouldLock, password) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const superAdminPassword = props.getProperty('SUPERADMIN_PASSWORD');
+    if (!superAdminPassword || password !== superAdminPassword) {
+      return { success: false, message: '認証に失敗しました' };
+    }
+
+    if (shouldLock === true) {
+      props.setProperty('SYSTEM_LOCKED', 'true');
+      props.setProperty('SYSTEM_LOCKED_AT', new Date().toISOString());
+    } else {
+      props.setProperty('SYSTEM_LOCKED', 'false');
+      props.deleteProperty('SYSTEM_LOCKED_AT');
+    }
+    return { success: true, locked: shouldLock === true };
+  } catch (e) {
+    Logger.log('setSystemLock Error: ' + e.message);
+    return { success: false, error: e.message };
+  }
 }

@@ -40,8 +40,8 @@
 /* オンライン状態インジケーター */
 #online-status {
   position: fixed;
-  top: 20px;
-  left: 20px;
+  right: 20px;
+  bottom: 20px;
   z-index: 1000;
   padding: 8px 16px;
   border-radius: 20px;
@@ -176,8 +176,8 @@
   }
   
   #online-status {
-    top: 10px;
-    left: 10px;
+    right: 10px;
+    bottom: 10px;
     padding: 6px 12px;
     font-size: 11px;
   }

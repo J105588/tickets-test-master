@@ -230,6 +230,7 @@ function navigateToWalkin() {
     }
 }
 
+
 // グローバル変数として設定
 window.loadSidebar = loadSidebar;
 window.toggleSidebar = toggleSidebar;
