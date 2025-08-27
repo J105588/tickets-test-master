@@ -1,6 +1,7 @@
-const CACHE_NAME = 'seats-management-v1';
-const STATIC_CACHE_NAME = 'seats-management-static-v1';
-const DYNAMIC_CACHE_NAME = 'seats-management-dynamic-v1';
+const CACHE_NAME = 'seats-management-v2';
+const STATIC_CACHE_NAME = 'seats-management-static-v2';
+const DYNAMIC_CACHE_NAME = 'seats-management-dynamic-v2';
+const RUNTIME_CACHE_NAME = 'seats-management-runtime-v2';
 
 // キャッシュする静的ファイル
 const STATIC_FILES = [
@@ -24,25 +25,40 @@ const STATIC_FILES = [
   '/timeslot-schedules.js',
   '/index-main.js',
   '/pwa.js',
-  '/manifest.json'
+  '/manifest.json',
+  // 外部リソースも事前キャッシュ
+  'https://raw.githubusercontent.com/J105588/video-nazuna/main/images/IMG_5316.png'
 ];
+
+// 高速化のためのキャッシュ戦略
+const CACHE_STRATEGIES = {
+  // 静的アセット: キャッシュファースト（最速）
+  STATIC: ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'woff', 'woff2', 'ttf', 'eot'],
+  // ナビゲーション: ネットワークファースト（新鮮さ重視）
+  NAVIGATION: ['document'],
+  // API: ネットワークファースト（データ新鮮さ）
+  API: ['script.google.com']
+};
 
 // インストール時の処理
 self.addEventListener('install', (event) => {
   console.log('Service Worker: Installing...');
   event.waitUntil(
-    caches.open(STATIC_CACHE_NAME)
-      .then((cache) => {
-        console.log('Service Worker: Caching static files');
-        return cache.addAll(STATIC_FILES);
-      })
-      .then(() => {
-        console.log('Service Worker: Static files cached');
-        return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('Service Worker: Cache installation failed', error);
-      })
+    (async () => {
+      const cache = await caches.open(STATIC_CACHE_NAME);
+      console.log('Service Worker: Caching static files');
+      
+      // 並列でキャッシュ（高速化）
+      const cachePromises = STATIC_FILES.map(url => 
+        cache.add(url).catch(err => 
+          console.warn(`Failed to cache ${url}:`, err)
+        )
+      );
+      
+      await Promise.allSettled(cachePromises);
+      console.log('Service Worker: Static files cached');
+      await self.skipWaiting();
+    })()
   );
 });
 
@@ -69,78 +85,97 @@ self.addEventListener('activate', (event) => {
         } catch (_) {}
       }
 
+      // 古いキャッシュを削除（容量管理）
+      const allCaches = await caches.keys();
+      await Promise.all(
+        allCaches.map(cacheName => {
+          if (!cacheName.includes('v2')) {
+            console.log('Service Worker: Deleting old cache', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+
       console.log('Service Worker: Activated');
       await self.clients.claim();
     })()
   );
 });
 
-// フェッチ時の処理
+// フェッチ時の処理（最適化されたキャッシュ戦略）
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // GAS APIの場合はネットワークファースト
+  // GAS API: ネットワークファースト（データ新鮮さ重視）
   if (url.hostname === 'script.google.com') {
-    // Never cache API responses to avoid stale data and reduce cache churn
-    event.respondWith(fetch(request).catch(() => caches.match('/offline.html')));
+    event.respondWith(
+      fetch(request)
+        .catch(() => caches.match('/offline.html'))
+    );
     return;
   }
 
-  // 静的アセット: キャッシュファースト
+  // 静的アセット: キャッシュファースト（最速）
   if (request.method === 'GET' && request.destination !== 'document') {
     event.respondWith(
       caches.match(request)
-        .then((response) => {
-          if (response) {
-            return response;
-          }
+        .then(cached => {
+          if (cached) return cached;
+          
           return fetch(request)
-            .then((fetchResponse) => {
-              if (fetchResponse.status === 200) {
-                const responseClone = fetchResponse.clone();
-                caches.open(DYNAMIC_CACHE_NAME).then(async (cache) => {
-                  await cache.put(request, responseClone);
-                  // Trim dynamic cache
-                  const keys = await cache.keys();
-                  const MAX_ENTRIES = 60;
-                  if (keys.length > MAX_ENTRIES) {
-                    await cache.delete(keys[0]);
-                  }
+            .then(response => {
+              if (response && response.status === 200) {
+                const responseClone = response.clone();
+                caches.open(RUNTIME_CACHE_NAME).then(cache => {
+                  cache.put(request, responseClone);
+                  // 軽量なキャッシュ管理
+                  cache.keys().then(keys => {
+                    if (keys.length > 100) cache.delete(keys[0]);
+                  });
                 });
               }
-              return fetchResponse;
+              return response;
+            })
+            .catch(() => {
+              // オフライン時は静的ファイルを返す
+              if (request.destination === 'image') {
+                return caches.match('https://raw.githubusercontent.com/J105588/video-nazuna/main/images/IMG_5316.png');
+              }
             });
         })
     );
     return;
   }
 
-  // HTMLナビゲーション: stale-while-revalidate (serve cache, update in background)
+  // HTMLナビゲーション: ネットワークファースト（新鮮さ重視）
   if (request.destination === 'document') {
     event.respondWith(
       (async () => {
-        const preload = event.preloadResponse ? await event.preloadResponse : null;
-        const cache = await caches.open(DYNAMIC_CACHE_NAME);
-        const cached = await caches.match(request);
-        const networkPromise = fetch(request)
-          .then(async (response) => {
-            if (response && response.status === 200) {
-              await cache.put(request, response.clone());
-            }
-            return response;
-          })
-          .catch(() => cached || caches.match('/offline.html'));
-
-        // Prefer preload > cache > network
-        if (preload) return preload;
-        return cached || networkPromise;
+        try {
+          // ネットワーク優先、キャッシュフォールバック
+          const response = await fetch(request);
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        } catch (error) {
+          // ネットワークエラー時はキャッシュから
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          
+          // 最終フォールバック
+          return caches.match('/offline.html');
+        }
       })()
     );
     return;
   }
 
-  // その他のリクエストは通常通り
+  // その他のリクエスト
   event.respondWith(fetch(request));
 });
 

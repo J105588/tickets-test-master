@@ -11,13 +11,19 @@ class PWA {
     this.setupEventListeners();
     this.checkInstallability();
     this.updateOnlineStatus();
-    // ロック状態の定期監視（コンソール指令で制御）
-    this.startSystemLockWatcher();
+    // ロック状態の監視はページ安定後・アイドル時に開始（他機能を最優先）
+    const deferStart = () => this.startSystemLockWatcher();
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(deferStart, { timeout: 5000 });
+    } else {
+      window.addEventListener('load', () => setTimeout(deferStart, 1500));
+    }
   }
 
   async startSystemLockWatcher() {
     try {
       const { default: GasAPI } = await import('./api.js');
+      let domObserver = null;
       const ensureGate = () => {
         if (!document.getElementById('system-lock-gate')) {
           const gate = document.createElement('div');
@@ -40,24 +46,25 @@ class PWA {
           const status = await GasAPI.getSystemLock();
           if (status && status.success && status.locked) {
             ensureGate();
+            // ロック中のみDOM監視を有効化
+            if (!domObserver) {
+              domObserver = new MutationObserver(() => {
+                if (!document.getElementById('system-lock-gate')) ensureGate();
+              });
+              domObserver.observe(document.body, { childList: true });
+            }
           } else {
             const gate = document.getElementById('system-lock-gate');
             if (gate) gate.remove();
+            if (domObserver) { domObserver.disconnect(); domObserver = null; }
           }
         } catch (_) {}
       };
 
-      await tick();
-      setInterval(tick, 15000);
-
-      const observer = new MutationObserver(() => {
-        GasAPI.getSystemLock().then((s) => {
-          if (s && s.success && s.locked && !document.getElementById('system-lock-gate')) {
-            ensureGate();
-          }
-        });
-      });
-      observer.observe(document.body, { childList: true });
+      // 初回は軽く遅延してUIをブロックしない
+      setTimeout(tick, 1000);
+      // ポーリング間隔は30秒（低負荷）
+      setInterval(tick, 30000);
     } catch (_) {}
   }
 
