@@ -602,11 +602,13 @@ input:checked+.slider:before {
 }
 
 .form-group input {
-    width: 100%;
+    width: calc(100% - 16px);
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    margin: 0 auto;
+    display: block;
 }
 
 .form-group input:focus {
