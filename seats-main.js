@@ -102,11 +102,24 @@ window.onload = async () => {
     }
     console.log("===== 座席データ詳細情報終了 =====");
     
-    if (seatData.success === false) {
-      const errorMsg = seatData.error || seatData.message || 'データ読み込みに失敗しました';
+    // エラーハンドリングの改善
+    if (!seatData || seatData.success === false) {
+      const errorMsg = seatData?.error || seatData?.message || 'データ読み込みに失敗しました';
       console.error('座席データ読み込み失敗:', errorMsg);
-      document.getElementById('error-message').textContent = 'データ読み込み失敗: ' + errorMsg;
-      document.getElementById('error-container').style.display = 'flex';
+      
+      // エラー表示を改善
+      const errorContainer = document.getElementById('error-container');
+      const errorMessage = document.getElementById('error-message');
+      if (errorContainer && errorMessage) {
+        errorMessage.textContent = `データ読み込み失敗: ${errorMsg}`;
+        errorContainer.style.display = 'flex';
+      } else {
+        // エラーコンテナがない場合はアラートで表示
+        alert(`座席データの読み込みに失敗しました: ${errorMsg}`);
+      }
+      
+      // エラー時でも基本的なUIは表示
+      showLoader(false);
       return;
     }
 
@@ -127,8 +140,17 @@ window.onload = async () => {
     startAutoRefresh();
   } catch (error) {
     console.error('サーバー通信失敗:', error);
-    document.getElementById('error-message').textContent = 'サーバー通信失敗: ' + error.message;
-    document.getElementById('error-container').style.display = 'flex';
+    
+    // エラー表示を改善
+    const errorContainer = document.getElementById('error-container');
+    const errorMessage = document.getElementById('error-message');
+    if (errorContainer && errorMessage) {
+      errorMessage.textContent = `サーバー通信失敗: ${error.message}`;
+      errorContainer.style.display = 'flex';
+    } else {
+      // エラーコンテナがない場合はアラートで表示
+      alert(`サーバー通信に失敗しました: ${error.message}`);
+    }
   } finally {
     showLoader(false);
   }

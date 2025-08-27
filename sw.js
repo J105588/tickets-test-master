@@ -102,81 +102,125 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// フェッチ時の処理（最適化されたキャッシュ戦略）
+// フェッチ時の処理（最適化されたキャッシュ戦略 + 堅牢なエラーハンドリング）
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
+  
+  // 基本的なエラーハンドリング
+  try {
+    const url = new URL(request.url);
+    
+    // GAS API: ネットワークファースト（データ新鮮さ重視）
+    if (url.hostname === 'script.google.com') {
+      event.respondWith(
+        fetch(request)
+          .catch(error => {
+            console.warn('GAS API fetch failed, falling back to offline page:', error);
+            return caches.match('/offline.html').catch(() => new Response('オフラインです'));
+          })
+      );
+      return;
+    }
 
-  // GAS API: ネットワークファースト（データ新鮮さ重視）
-  if (url.hostname === 'script.google.com') {
-    event.respondWith(
-      fetch(request)
-        .catch(() => caches.match('/offline.html'))
-    );
-    return;
-  }
+    // 静的アセット: キャッシュファースト（最速）
+    if (request.method === 'GET' && request.destination !== 'document') {
+      event.respondWith(
+        caches.match(request)
+          .then(cached => {
+            if (cached) return cached;
+            
+            return fetch(request)
+              .then(response => {
+                if (response && response.status === 200) {
+                  const responseClone = response.clone();
+                  caches.open(RUNTIME_CACHE_NAME).then(cache => {
+                    cache.put(request, responseClone).catch(err => 
+                      console.warn('Failed to cache response:', err)
+                    );
+                    // 軽量なキャッシュ管理
+                    cache.keys().then(keys => {
+                      if (keys.length > 100) cache.delete(keys[0]).catch(() => {});
+                    }).catch(() => {});
+                  }).catch(err => console.warn('Failed to open runtime cache:', err));
+                }
+                return response;
+              })
+              .catch(error => {
+                console.warn('Static asset fetch failed:', error);
+                // オフライン時は静的ファイルを返す
+                if (request.destination === 'image') {
+                  return caches.match('https://raw.githubusercontent.com/J105588/video-nazuna/main/images/IMG_5316.png')
+                    .catch(() => new Response('', { status: 404 }));
+                }
+                return new Response('', { status: 404 });
+              });
+          })
+          .catch(error => {
+            console.warn('Cache match failed:', error);
+            return new Response('', { status: 404 });
+          })
+      );
+      return;
+    }
 
-  // 静的アセット: キャッシュファースト（最速）
-  if (request.method === 'GET' && request.destination !== 'document') {
-    event.respondWith(
-      caches.match(request)
-        .then(cached => {
-          if (cached) return cached;
-          
-          return fetch(request)
-            .then(response => {
-              if (response && response.status === 200) {
-                const responseClone = response.clone();
-                caches.open(RUNTIME_CACHE_NAME).then(cache => {
-                  cache.put(request, responseClone);
-                  // 軽量なキャッシュ管理
-                  cache.keys().then(keys => {
-                    if (keys.length > 100) cache.delete(keys[0]);
-                  });
-                });
-              }
-              return response;
-            })
-            .catch(() => {
-              // オフライン時は静的ファイルを返す
-              if (request.destination === 'image') {
-                return caches.match('https://raw.githubusercontent.com/J105588/video-nazuna/main/images/IMG_5316.png');
-              }
-            });
-        })
-    );
-    return;
-  }
-
-  // HTMLナビゲーション: ネットワークファースト（新鮮さ重視）
-  if (request.destination === 'document') {
-    event.respondWith(
-      (async () => {
-        try {
-          // ネットワーク優先、キャッシュフォールバック
-          const response = await fetch(request);
-          if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(DYNAMIC_CACHE_NAME).then(cache => {
-              cache.put(request, responseClone);
-            });
+    // HTMLナビゲーション: ネットワークファースト（新鮮さ重視）
+    if (request.destination === 'document') {
+      event.respondWith(
+        (async () => {
+          try {
+            // ネットワーク優先、キャッシュフォールバック
+            const response = await fetch(request);
+            if (response && response.status === 200) {
+              const responseClone = response.clone();
+              caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+                cache.put(request, responseClone).catch(err => 
+                  console.warn('Failed to cache document:', err)
+                );
+              }).catch(err => console.warn('Failed to open dynamic cache:', err));
+            }
+            return response;
+          } catch (error) {
+            console.warn('Document fetch failed, trying cache:', error);
+            try {
+              // ネットワークエラー時はキャッシュから
+              const cached = await caches.match(request);
+              if (cached) return cached;
+            } catch (cacheError) {
+              console.warn('Cache match failed:', cacheError);
+            }
+            
+            // 最終フォールバック
+            try {
+              return await caches.match('/offline.html');
+            } catch (offlineError) {
+              console.warn('Offline page not available:', offlineError);
+              return new Response(`
+                <html><body>
+                  <h1>オフラインです</h1>
+                  <p>インターネット接続を確認してください。</p>
+                  <button onclick="location.reload()">再読み込み</button>
+                </body></html>
+              `, { headers: { 'Content-Type': 'text/html' } });
+            }
           }
-          return response;
-        } catch (error) {
-          // ネットワークエラー時はキャッシュから
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          
-          // 最終フォールバック
-          return caches.match('/offline.html');
-        }
-      })()
-    );
-    return;
-  }
+        })()
+      );
+      return;
+    }
 
-  // その他のリクエスト
-  event.respondWith(fetch(request));
+    // その他のリクエスト
+    event.respondWith(
+      fetch(request).catch(error => {
+        console.warn('Fetch failed for other request:', error);
+        return new Response('', { status: 404 });
+      })
+    );
+    
+  } catch (error) {
+    console.error('Service Worker fetch handler error:', error);
+    // 最悪の場合のフォールバック
+    event.respondWith(new Response('エラーが発生しました', { status: 500 }));
+  }
 });
 
 // バックグラウンド同期（オプション）

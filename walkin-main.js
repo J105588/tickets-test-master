@@ -159,7 +159,12 @@ async function issueWalkinTicket() {
       walkinBtn.textContent = '再度、空席を探す';
     }
   } catch (error) {
-    alert('エラーが発生しました: ' + error.message);
+    console.error('当日券発行エラー:', error);
+    
+    // エラー表示を改善
+    const errorMessage = error.message || '不明なエラーが発生しました';
+    alert(`当日券発行中にエラーが発生しました: ${errorMessage}`);
+    
     walkinBtn.disabled = false;
     walkinBtn.textContent = '空席を探して当日券を発行する';
   } finally {

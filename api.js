@@ -24,11 +24,12 @@ class GasAPI {
             if (data && typeof data === 'object') {
               resolve(data);
             } else {
-              reject(new Error('無効なAPIレスポンスです'));
+              // エラーレスポンスでもresolveして、呼び出し側で処理
+              resolve({ success: false, error: '無効なAPIレスポンスです', data: data });
             }
           } catch (e) {
             console.error('API response cleanup failed:', e);
-            reject(new Error('API応答の処理中にエラーが発生しました: ' + e.message));
+            resolve({ success: false, error: 'API応答の処理中にエラーが発生しました: ' + e.message });
           }
         };
 
@@ -52,7 +53,7 @@ class GasAPI {
             }
           } catch (e) {}
           this._reportError(`JSONPタイムアウト: ${functionName}`);
-          reject(new Error(`JSONPタイムアウト: ${functionName}`));
+          resolve({ success: false, error: `JSONPタイムアウト: ${functionName}`, timeout: true });
         }, 15000);
 
         script.onerror = (error) => {
@@ -83,10 +84,10 @@ class GasAPI {
             console.error('API call failed details:', errorDetails);
             
             this._reportError(`JSONPリクエストに失敗しました: ${functionName} (詳細: ${JSON.stringify(errorDetails)})`);
-            reject(new Error(`JSONPリクエストに失敗しました: ${functionName}`));
+            resolve({ success: false, error: `JSONPリクエストに失敗しました: ${functionName}`, details: errorDetails });
           } catch (e) {
             console.error('API error cleanup failed:', e);
-            reject(new Error('APIエラー処理中に例外が発生しました: ' + e.message));
+            resolve({ success: false, error: 'APIエラー処理中に例外が発生しました: ' + e.message });
           }
         };
         
@@ -94,7 +95,7 @@ class GasAPI {
       } catch (err) {
         console.error('API call exception:', err);
         this._reportError(`API呼び出し例外: ${err.message}`);
-        reject(err);
+        resolve({ success: false, error: `API呼び出し例外: ${err.message}`, exception: true });
       }
     });
   }

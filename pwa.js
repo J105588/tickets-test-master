@@ -1,4 +1,6 @@
 // pwa.js - PWA管理用スクリプト
+import errorHandler from './error-handler.js';
+
 class PWA {
   constructor() {
     this.deferredPrompt = null;
@@ -58,14 +60,22 @@ class PWA {
             if (gate) gate.remove();
             if (domObserver) { domObserver.disconnect(); domObserver = null; }
           }
-        } catch (_) {}
+        } catch (error) {
+          errorHandler.handleError(error, 'lock', () => {
+            console.warn('System lock check failed, maintaining lock state for safety');
+          });
+        }
       };
 
       // 初回は軽く遅延してUIをブロックしない
       setTimeout(tick, 1000);
       // ポーリング間隔は30秒（低負荷）
       setInterval(tick, 30000);
-    } catch (_) {}
+    } catch (error) {
+      errorHandler.handleError(error, 'lock', () => {
+        console.warn('Failed to start system lock watcher, disabling lock feature');
+      });
+    }
   }
 
   // Service Workerの登録
@@ -85,7 +95,9 @@ class PWA {
           });
         });
       } catch (error) {
-        console.error('Service Worker registration failed:', error);
+        errorHandler.handleError(error, 'service-worker', () => {
+          console.error('Service Worker registration failed, continuing without PWA features');
+        });
       }
     }
   }
