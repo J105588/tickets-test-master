@@ -39,10 +39,7 @@
 ### 共通レイアウト/部品
 - `styles.css`: 全体スタイル
 - `sidebar.js` / `sidebar.css`: サイドバー、モード切替モーダル、ナビゲーション
-- `pwa.js` / `pwa.css`: PWA機能（インストール、オフライン対応、更新通知）
-- `sw.js`: Service Worker（キャッシュ、オフライン対応）
-- `manifest.json`: Web App Manifest（PWA設定）
-- `offline.html`: オフライン時のフォールバックページ
+- `system-lock.js`: システムロック機能（ページロック）
 
 ### 機能別ファイル
 - `seats-main.js` / `seats.css`: 座席マップ表示・予約・チェックイン・最高管理者編集・当日券ナビゲーション
@@ -88,11 +85,9 @@
 - 静的ファイル群（HTML/CSS/ES Modules）。ビルド不要。
 - モジュラー設計で機能別にファイルを分割
 - レスポンシブデザイン対応
-- **PWA（Progressive Web App）対応**
-  - Service Workerによるオフライン対応
-  - Web App Manifestによるインストール可能
-  - プッシュ通知対応
-  - 自動更新機能
+- **システムロック機能**
+  - ページロックによるセキュリティ
+  - リアルタイムロック状態監視
 
 ### バックエンド
 - GAS を JSONP で呼び出し（`api.js`）
@@ -248,6 +243,11 @@
 ---
 
 ## 🆕 最近の変更点（ハイライト）
+
+### PWA機能の削除と通常WEBアプリ化
+- **PWA関連ファイルの削除**: manifest.json、sw.js、pwa.js、pwa.css、offline.htmlを削除
+- **システムロック機能の独立**: ページロック機能をsystem-lock.jsとして分離
+- **通常WEBアプリとして稼働**: PWA機能なしで標準的なWEBアプリケーションとして動作
 
 ### 最高管理者モードの追加
 - **座席データ編集**: C、D、E列を自由に編集可能
@@ -536,8 +536,8 @@ changeSuperAdminPassword('mySecurePassword'); // カスタムパスワード
 
 ### 技術的改善
 - WebSocket対応
-- PWA対応
-- オフライン機能
+- リアルタイム通信
+- パフォーマンス最適化
 
 ### セキュリティ強化
 - 多要素認証
