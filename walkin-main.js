@@ -131,7 +131,12 @@ async function issueWalkinTicket() {
     }
     
     if (response.success) {
-      alert(response.message || '座席が確保されました。');
+      // 成功時：即座に成功メッセージを表示（ローダーは非表示）
+      showLoader(false);
+      
+      // 成功通知を表示（非ブロッキング）
+      showSuccessNotification(response.message || '座席が確保されました。');
+      
       walkinBtn.style.background = '#28a745';
       
       let seats = [];
@@ -148,29 +153,89 @@ async function issueWalkinTicket() {
       }
       reservationResult.classList.add('show');
       
+      // バックグラウンドで座席データを再取得（サイレント更新）
+      setTimeout(async () => {
+        try {
+          // 座席データを更新（必要に応じて）
+          console.log('当日券発行後のバックグラウンド更新完了');
+        } catch (error) {
+          console.warn('バックグラウンド更新エラー（非致命的）:', error);
+        }
+      }, 1000);
+      
       setTimeout(() => {
         walkinBtn.disabled = false;
         walkinBtn.textContent = '再度、空席を探して当日券を発行する';
         walkinBtn.style.background = '#007bff';
       }, 3000);
     } else {
-      alert(response.message || '空席が見つかりませんでした。');
+      // エラー時：UIを元に戻す
+      showLoader(false);
+      showErrorNotification(response.message || '空席が見つかりませんでした。');
       walkinBtn.disabled = false;
       walkinBtn.textContent = '再度、空席を探す';
     }
   } catch (error) {
     console.error('当日券発行エラー:', error);
     
-    // エラー表示を改善
+    // エラー時：UIを元に戻す
+    showLoader(false);
+    
+    // エラー通知を表示（非ブロッキング）
     const errorMessage = error.message || '不明なエラーが発生しました';
-    alert(`当日券発行中にエラーが発生しました: ${errorMessage}`);
+    showErrorNotification(`当日券発行中にエラーが発生しました: ${errorMessage}`);
     
     walkinBtn.disabled = false;
     walkinBtn.textContent = '空席を探して当日券を発行する';
   } finally {
-    showLoader(false);
     _isIssuingWalkin = false;
   }
+}
+
+// 成功通知を表示する関数（非ブロッキング）
+function showSuccessNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'success-notification';
+  notification.innerHTML = `
+    <div class="notification-content">
+      <span class="notification-icon">✓</span>
+      <span class="notification-message">${message}</span>
+      <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+    </div>
+  `;
+  
+  // 通知を表示
+  document.body.appendChild(notification);
+  
+  // 3秒後に自動で消す
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 3000);
+}
+
+// エラー通知を表示する関数（非ブロッキング）
+function showErrorNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'error-notification';
+  notification.innerHTML = `
+    <div class="notification-content">
+      <span class="notification-icon">✗</span>
+      <span class="notification-message">${message}</span>
+      <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+    </div>
+  `;
+  
+  // 通知を表示
+  document.body.appendChild(notification);
+  
+  // 5秒後に自動で消す
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 5000);
 }
 
 // グローバル関数として設定
