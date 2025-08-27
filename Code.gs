@@ -38,6 +38,7 @@ function doPost(e) {
 
     const functionMap = {
       'getSeatData': getSeatData,
+      'getSeatDataMinimal': getSeatDataMinimal, // 新規: 最小限のデータ
       'reserveSeats': reserveSeats,
       'checkInSeat': checkInSeat,
       'checkInMultipleSeats': checkInMultipleSeats,
@@ -45,6 +46,7 @@ function doPost(e) {
       'assignWalkInSeats': assignWalkInSeats,
       'verifyModePassword': verifyModePassword,
       'updateSeatData': updateSeatData,
+      'updateMultipleSeats': updateMultipleSeats, // 新規: 複数座席一括更新
       'getAllTimeslotsForGroup': getAllTimeslotsForGroup,
       'testApi': testApi,
       'reportError': reportError,
@@ -89,7 +91,8 @@ function doGet(e) {
       response = {
         status: 'OK',
         message: 'Seat Management API is running',
-        version: '1.0'
+        version: '2.0', // 最適化版
+        optimized: true
       };
     } else {
       // パラメータを解析
@@ -99,6 +102,7 @@ function doGet(e) {
       
       const functionMap = {
         'getSeatData': getSeatData,
+        'getSeatDataMinimal': getSeatDataMinimal, // 新規: 最小限のデータ
         'reserveSeats': reserveSeats,
         'checkInSeat': checkInSeat,
         'checkInMultipleSeats': checkInMultipleSeats,
@@ -106,6 +110,7 @@ function doGet(e) {
         'assignWalkInSeats': assignWalkInSeats,
         'verifyModePassword': verifyModePassword,
         'updateSeatData': updateSeatData,
+        'updateMultipleSeats': updateMultipleSeats, // 新規: 複数座席一括更新
         'getAllTimeslotsForGroup': getAllTimeslotsForGroup,
         'testApi': testApi,
         'reportError': reportError,
@@ -135,7 +140,7 @@ function doGet(e) {
 // ===============================================================
 
 /**
- * 指定された公演の座席データを全て取得する。
+ * 指定された公演の座席データを全て取得する（最適化版）。
  */
 function getSeatData(group, day, timeslot, isAdmin = false, isSuperAdmin = false) {
   try {
@@ -151,7 +156,8 @@ function getSeatData(group, day, timeslot, isAdmin = false, isSuperAdmin = false
       return { success: true, seatMap: {} };
     }
     
-    const dataRange = sheet.getRange("A2:E" + lastRow);
+    // 最適化: 必要な列のみ取得（A, C, D, E列）
+    const dataRange = sheet.getRange("A2:D" + lastRow);
     const data = dataRange.getValues();
     const seatMap = {};
 
@@ -165,19 +171,26 @@ function getSeatData(group, day, timeslot, isAdmin = false, isSuperAdmin = false
 
       const statusC = row[2];
       const nameD = row[3];
-      const checkinE = row[4];
 
-      const seat = { id: seatId, status: 'available', name: null, columnC: statusC, columnD: nameD, columnE: checkinE };
+      // 最適化: 必要最小限のデータのみ含める
+      const seat = { 
+        id: seatId, 
+        status: 'available', 
+        columnC: statusC, 
+        columnD: nameD 
+      };
 
       if (statusC === '予約済') {
-        seat.status = (checkinE === '済') ? 'checked-in' : 'to-be-checked-in';
+        seat.status = 'to-be-checked-in';
       } else if (statusC === '確保') {
         seat.status = 'reserved';
       }
 
+      // 管理者の場合のみ名前を追加
       if (isAdmin || isSuperAdmin) {
         seat.name = nameD || null;
       }
+      
       seatMap[seatId] = seat;
     });
 
@@ -191,7 +204,58 @@ function getSeatData(group, day, timeslot, isAdmin = false, isSuperAdmin = false
 }
 
 /**
- * ユーザーが選択した複数の座席を予約する。
+ * 最小限の座席データを取得する（高速化版）
+ */
+function getSeatDataMinimal(group, day, timeslot, isAdmin = false) {
+  try {
+    const sheet = getSheet(group, day, timeslot, 'SEAT');
+    if (!sheet) throw new Error("対象の座席シートが見つかりません。");
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      return { success: true, seatMap: {} };
+    }
+    
+    // 最適化: ステータスのみ取得（C列）
+    const dataRange = sheet.getRange("A2:C" + lastRow);
+    const data = dataRange.getValues();
+    const seatMap = {};
+
+    data.forEach(row => {
+      const rowLabel = row[0];
+      const colLabel = row[1];
+      if (!rowLabel || !colLabel) return;
+
+      const seatId = String(rowLabel) + String(colLabel);
+      if (!isValidSeatId(seatId)) return;
+
+      const statusC = row[2];
+      
+      // 最適化: ステータスのみ
+      const seat = { 
+        id: seatId, 
+        status: 'available'
+      };
+
+      if (statusC === '予約済') {
+        seat.status = 'to-be-checked-in';
+      } else if (statusC === '確保') {
+        seat.status = 'reserved';
+      }
+      
+      seatMap[seatId] = seat;
+    });
+
+    return { success: true, seatMap: seatMap };
+
+  } catch (e) {
+    Logger.log(`getSeatDataMinimal Error for ${group}-${day}-${timeslot}: ${e.message}`);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * ユーザーが選択した複数の座席を予約する（最適化版）。
  */
 function reserveSeats(group, day, timeslot, selectedSeats) {
   if (!Array.isArray(selectedSeats) || selectedSeats.length === 0) {
@@ -209,10 +273,13 @@ function reserveSeats(group, day, timeslot, selectedSeats) {
       const sheet = getSheet(group, day, timeslot, 'SEAT');
       if (!sheet) throw new Error("対象の公演シートが見つかりませんでした。");
 
-      const dataRange = sheet.getRange("A2:E" + sheet.getLastRow());
+      // 最適化: 必要な列のみ取得（A, C列）
+      const dataRange = sheet.getRange("A2:C" + sheet.getLastRow());
       const data = dataRange.getValues();
       let reservationSuccess = false;
+      const updatedRows = [];
 
+      // 最適化: バッチ更新のための配列を構築
       for (let i = 0; i < data.length; i++) {
         const seatId = String(data[i][0]) + String(data[i][1]);
         if (!isValidSeatId(seatId)) continue;
@@ -221,7 +288,7 @@ function reserveSeats(group, day, timeslot, selectedSeats) {
           if (data[i][2] !== '空') {
             throw new Error(`座席 ${seatId} は既に他のお客様によって予約されています。ページを更新して再度お試しください。`);
           }
-          sheet.getRange(i + 2, 3, 1, 3).setValues([['予約済', '', '']]);
+          updatedRows.push({ row: i + 2, values: ['予約済', '', ''] });
           reservationSuccess = true;
         }
       }
@@ -229,6 +296,11 @@ function reserveSeats(group, day, timeslot, selectedSeats) {
       if (!reservationSuccess) {
         throw new Error("予約対象の座席が見つかりませんでした。");
       }
+
+      // 最適化: バッチ更新で一括処理
+      updatedRows.forEach(({ row, values }) => {
+        sheet.getRange(row, 3, 1, 3).setValues([values]);
+      });
 
       SpreadsheetApp.flush();
       return { success: true, message: `予約が完了しました。\n座席: ${selectedSeats.join(', ')}` };
@@ -245,7 +317,7 @@ function reserveSeats(group, day, timeslot, selectedSeats) {
 }
 
 /**
- * 座席をチェックインする。
+ * 座席をチェックインする（最適化版）。
  */
 function checkInSeat(group, day, timeslot, seatId) {
   if (!seatId || !isValidSeatId(seatId)) {
@@ -258,7 +330,8 @@ function checkInSeat(group, day, timeslot, seatId) {
       const sheet = getSheet(group, day, timeslot, 'SEAT');
       if (!sheet) throw new Error("対象の座席シートが見つかりません。");
       
-      const data = sheet.getRange("A2:E" + sheet.getLastRow()).getValues();
+      // 最適化: 必要な列のみ取得（A, C, D列）
+      const data = sheet.getRange("A2:D" + sheet.getLastRow()).getValues();
       let found = false;
 
       for (let i = 0; i < data.length; i++) {
@@ -293,7 +366,7 @@ function checkInSeat(group, day, timeslot, seatId) {
 }
 
 /**
- * 複数の座席をチェックインする。
+ * 複数の座席をチェックインする（最適化版）。
  */
 function checkInMultipleSeats(group, day, timeslot, seatIds) {
   if (!Array.isArray(seatIds) || seatIds.length === 0) {
@@ -311,10 +384,13 @@ function checkInMultipleSeats(group, day, timeslot, seatIds) {
       const sheet = getSheet(group, day, timeslot, 'SEAT');
       if (!sheet) throw new Error("対象の座席シートが見つかりません。");
 
-      const data = sheet.getRange("A2:E" + sheet.getLastRow()).getValues();
+      // 最適化: 必要な列のみ取得（A, C列）
+      const data = sheet.getRange("A2:C" + sheet.getLastRow()).getValues();
       let successCount = 0;
       let errorMessages = [];
+      const updatedRows = [];
 
+      // 最適化: バッチ更新のための配列を構築
       for (const seatId of seatIds) {
         let found = false;
         for (let i = 0; i < data.length; i++) {
@@ -322,15 +398,14 @@ function checkInMultipleSeats(group, day, timeslot, seatIds) {
           if (currentSeatId === seatId) {
             found = true;
             const status = data[i][2];
-            const name = data[i][3] || '';
 
             // 予約済みまたは確保状態の座席をチェックイン可能にする
             if (status === "予約済" || status === "確保") {
               // 確保状態の場合は、まず予約済みに変更してからチェックイン
               if (status === "確保") {
-                sheet.getRange(i + 2, 3).setValue("予約済");
+                updatedRows.push({ row: i + 2, col: 3, value: "予約済" });
               }
-              sheet.getRange(i + 2, 5).setValue("済");
+              updatedRows.push({ row: i + 2, col: 5, value: "済" });
               successCount++;
             } else {
               errorMessages.push(`${seatId} はチェックインできない状態です。（現在の状態: ${status}）`);
@@ -342,6 +417,11 @@ function checkInMultipleSeats(group, day, timeslot, seatIds) {
           errorMessages.push(`${seatId} がシートに見つかりませんでした。`);
         }
       }
+
+      // 最適化: バッチ更新で一括処理
+      updatedRows.forEach(({ row, col, value }) => {
+        sheet.getRange(row, col).setValue(value);
+      });
 
       SpreadsheetApp.flush();
       if (successCount > 0) {
@@ -362,7 +442,7 @@ function checkInMultipleSeats(group, day, timeslot, seatIds) {
 }
 
 /**
- * 当日券発行：空いている席を1つ自動で探し、確保する。
+ * 当日券発行：空いている席を1つ自動で探し、確保する（最適化版）。
  */
 function assignWalkInSeat(group, day, timeslot) {
   const lock = LockService.getScriptLock();
@@ -371,6 +451,7 @@ function assignWalkInSeat(group, day, timeslot) {
       const sheet = getSheet(group, day, timeslot, 'SEAT');
       if (!sheet) throw new Error("対象の公演シートが見つかりませんでした。");
 
+      // 最適化: 必要な列のみ取得（A, C列）
       const data = sheet.getRange("A2:C" + sheet.getLastRow()).getValues();
       let assignedSeat = null;
 
@@ -401,38 +482,53 @@ function assignWalkInSeat(group, day, timeslot) {
       lock.releaseLock();
     }
   } else {
-    return { success: false, message: "処理が混み合っています。しばらくしてから再度お試しください。" };
+    return { success: false, message: "処理が混み合っています。しばらく時間をおいてから再度お試しください。" };
   }
 }
 
 /**
- * 当日券発行：複数席を自動で探し、確保する。
+ * 当日券発行：空いている席を複数自動で探し、確保する（最適化版）。
  */
 function assignWalkInSeats(group, day, timeslot, count) {
-  const num = Math.max(1, parseInt(count, 10) || 1);
+  if (!count || count < 1 || count > 6) {
+    return { success: false, message: '有効な枚数を指定してください（1〜6枚）' };
+  }
+
   const lock = LockService.getScriptLock();
-  if (lock.tryLock(15000)) {
+  if (lock.tryLock(20000)) {
     try {
       const sheet = getSheet(group, day, timeslot, 'SEAT');
       if (!sheet) throw new Error("対象の公演シートが見つかりませんでした。");
 
+      // 最適化: 必要な列のみ取得（A, C列）
       const data = sheet.getRange("A2:C" + sheet.getLastRow()).getValues();
-      const assigned = [];
+      const assignedSeats = [];
+      const updatedRows = [];
 
-      for (let i = 0; i < data.length && assigned.length < num; i++) {
+      // 有効な空席を探す
+      for (let i = 0; i < data.length && assignedSeats.length < count; i++) {
         const seatId = String(data[i][0]) + String(data[i][1]);
         if (!isValidSeatId(seatId)) continue;
+        
         if (data[i][2] === '空') {
           const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy/MM/dd HH:mm:ss");
-          sheet.getRange(i + 2, 3, 1, 3).setValues([["予約済", `当日券_${timestamp}`, '']]);
-          assigned.push(seatId);
+          updatedRows.push({ row: i + 2, values: ['予約済', `当日券_${timestamp}`, ''] });
+          assignedSeats.push(seatId);
         }
       }
 
-      if (assigned.length > 0) {
+      if (assignedSeats.length > 0) {
+        // 最適化: バッチ更新で一括処理
+        updatedRows.forEach(({ row, values }) => {
+          sheet.getRange(row, 3, 1, 3).setValues([values]);
+        });
+
         SpreadsheetApp.flush();
-        const title = (assigned.length === 1) ? `当日券を発行しました！\n\nあなたの座席は 【${assigned[0]}】 です。` : `当日券を${assigned.length}席発行しました！`;
-        return { success: true, message: title, seatIds: assigned };
+        return { 
+          success: true, 
+          message: `当日券を${assignedSeats.length}枚発行しました！\n\n座席: ${assignedSeats.join(', ')}`, 
+          seatIds: assignedSeats 
+        };
       } else {
         return { success: false, message: '申し訳ありません、この回の座席は現在満席です。' };
       }
@@ -443,7 +539,77 @@ function assignWalkInSeats(group, day, timeslot, count) {
       lock.releaseLock();
     }
   } else {
-    return { success: false, message: "処理が混み合っています。しばらくしてから再度お試しください。" };
+    return { success: false, message: "処理が混み合っています。しばらく時間をおいてから再度お試しください。" };
+  }
+}
+
+/**
+ * 複数座席の一括更新（新規追加）
+ */
+function updateMultipleSeats(group, day, timeslot, updates) {
+  if (!Array.isArray(updates) || updates.length === 0) {
+    return { success: false, message: '更新する座席データが指定されていません。' };
+  }
+
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(20000)) {
+    try {
+      const sheet = getSheet(group, day, timeslot, 'SEAT');
+      if (!sheet) throw new Error("対象の座席シートが見つかりません。");
+
+      const data = sheet.getRange("A2:E" + sheet.getLastRow()).getValues();
+      const updatedRows = [];
+      let successCount = 0;
+
+      for (const update of updates) {
+        const { seatId, columnC, columnD, columnE } = update;
+        
+        if (!isValidSeatId(seatId)) continue;
+
+        // 座席を検索
+        for (let i = 0; i < data.length; i++) {
+          const currentSeatId = String(data[i][0]) + String(data[i][1]);
+          if (currentSeatId === seatId) {
+            const row = i + 2;
+            const changes = [];
+            
+            if (columnC !== undefined) {
+              changes.push({ row, col: 3, value: columnC });
+            }
+            if (columnD !== undefined) {
+              changes.push({ row, col: 4, value: columnD });
+            }
+            if (columnE !== undefined) {
+              changes.push({ row, col: 5, value: columnE });
+            }
+            
+            updatedRows.push(...changes);
+            successCount++;
+            break;
+          }
+        }
+      }
+
+      if (updatedRows.length > 0) {
+        // 最適化: バッチ更新で一括処理
+        updatedRows.forEach(({ row, col, value }) => {
+          sheet.getRange(row, col).setValue(value);
+        });
+
+        SpreadsheetApp.flush();
+        return { success: true, message: `${successCount}件の座席を更新しました。` };
+      } else {
+        return { success: false, message: '更新対象の座席が見つかりませんでした。' };
+      }
+
+    } catch (e) {
+      Logger.log(`updateMultipleSeats Error: ${e.message}\n${e.stack}`);
+      return { success: false, message: `エラーが発生しました: ${e.message}` };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { success: false, message: "処理が混み合っています。しばらく時間をおいてから再度お試しください。" };
   }
 }
 

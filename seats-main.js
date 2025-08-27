@@ -232,7 +232,7 @@ function drawSeatMap(seatMap) {
   container.appendChild(seatSection);
 }
 
-// 自動更新機能の実装
+// 自動更新機能の実装（最適化版）
 function startAutoRefresh() {
   if (autoRefreshInterval) {
     clearInterval(autoRefreshInterval);
@@ -250,10 +250,25 @@ function startAutoRefresh() {
         const isAdminMode = currentMode === 'admin' || IS_ADMIN;
         const isSuperAdminMode = currentMode === 'superadmin';
         
-        const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
+        // 最適化: 通常の自動更新時は最小限のデータを取得
+        let seatData;
+        if (isAdminMode || isSuperAdminMode) {
+          // 管理者モードの場合は完全なデータを取得
+          seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
+        } else {
+          // 通常モードの場合は最小限のデータを取得（高速化）
+          seatData = await GasAPI.getSeatDataMinimal(GROUP, DAY, TIMESLOT, isAdminMode);
+        }
         
         if (seatData.success) {
-          drawSeatMap(seatData.seatMap);
+          // 最小限データの場合は既存の座席データとマージ
+          if (seatData.seatMap && Object.keys(seatData.seatMap).length > 0) {
+            // 既存の座席データを保持しつつ、ステータスのみ更新
+            updateSeatMapWithMinimalData(seatData.seatMap);
+          } else {
+            // 完全なデータの場合は通常通り更新
+            drawSeatMap(seatData.seatMap);
+          }
           updateLastUpdateTime();
         }
       } catch (error) {
@@ -263,6 +278,33 @@ function startAutoRefresh() {
       }
     }, 30000); // 30秒ごとに更新
   }
+}
+
+// 最小限データで座席マップを更新する関数
+function updateSeatMapWithMinimalData(minimalSeatMap) {
+  // 既存の座席要素を取得
+  const existingSeats = document.querySelectorAll('.seat');
+  
+  existingSeats.forEach(seatEl => {
+    const seatId = seatEl.dataset.id;
+    const minimalData = minimalSeatMap[seatId];
+    
+    if (minimalData) {
+      // ステータスのみ更新（色とクラス）
+      const currentStatus = seatEl.dataset.status;
+      if (currentStatus !== minimalData.status) {
+        // ステータスが変更された場合のみ更新
+        seatEl.dataset.status = minimalData.status;
+        
+        // クラスを更新
+        seatEl.className = 'seat';
+        seatEl.classList.add(`status-${minimalData.status}`);
+        
+        // 色を更新
+        updateSeatColor(seatEl, minimalData.status);
+      }
+    }
+  });
 }
 
 // 自動更新の切り替え

@@ -204,6 +204,18 @@ class GasAPI {
     return response;
   }
 
+  // 最適化された座席データ取得（最小限のデータ）
+  static async getSeatDataMinimal(group, day, timeslot, isAdmin = false) {
+    const response = await this._callApi('getSeatDataMinimal', [group, day, timeslot, isAdmin]);
+    return response;
+  }
+
+  // 複数座席の一括更新
+  static async updateMultipleSeats(group, day, timeslot, updates) {
+    const response = await this._callApi('updateMultipleSeats', [group, day, timeslot, updates]);
+    return response;
+  }
+
   // GASの疎通テスト用関数
   static async testGASConnection() {
     try {
@@ -232,4 +244,62 @@ if (typeof window !== 'undefined') {
     return GasAPI.setSystemLock(false, password);
   };
   window.SeatApp.status = async () => GasAPI.getSystemLock();
+}
+
+// 最適化された座席データ取得（最小限のデータ）
+async function getSeatDataMinimal(group, day, timeslot, isAdmin = false) {
+  return new Promise((resolve, reject) => {
+    const callback = 'cb' + Date.now();
+    const params = encodeURIComponent(JSON.stringify([group, day, timeslot, isAdmin]));
+    
+    window[callback] = (response) => {
+      delete window[callback];
+      if (response && response.success) {
+        resolve(response);
+      } else {
+        reject(new Error(response?.error || '座席データの取得に失敗しました'));
+      }
+    };
+
+    const script = document.createElement('script');
+    script.src = `${GAS_API_URL}?callback=${callback}&func=getSeatDataMinimal&params=${params}`;
+    script.onerror = () => reject(new Error('API呼び出しに失敗しました'));
+    
+    document.head.appendChild(script);
+    
+    // タイムアウト設定
+    setTimeout(() => {
+      delete window[callback];
+      reject(new Error('API呼び出しがタイムアウトしました'));
+    }, 15000);
+  });
+}
+
+// 複数座席の一括更新
+async function updateMultipleSeats(group, day, timeslot, updates) {
+  return new Promise((resolve, reject) => {
+    const callback = 'cb' + Date.now();
+    const params = encodeURIComponent(JSON.stringify([group, day, timeslot, updates]));
+    
+    window[callback] = (response) => {
+      delete window[callback];
+      if (response && response.success) {
+        resolve(response);
+      } else {
+        reject(new Error(response?.message || '座席データの更新に失敗しました'));
+      }
+    };
+
+    const script = document.createElement('script');
+    script.src = `${GAS_API_URL}?callback=${callback}&func=updateMultipleSeats&params=${params}`;
+    script.onerror = () => reject(new Error('API呼び出しに失敗しました'));
+    
+    document.head.appendChild(script);
+    
+    // タイムアウト設定
+    setTimeout(() => {
+      delete window[callback];
+      reject(new Error('API呼び出しがタイムアウトしました'));
+    }, 15000);
+  });
 }
