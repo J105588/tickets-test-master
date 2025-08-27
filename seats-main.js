@@ -39,6 +39,7 @@ window.onload = async () => {
   const currentMode = localStorage.getItem('currentMode') || 'normal';
   const isAdminMode = currentMode === 'admin' || IS_ADMIN;
   const isSuperAdminMode = currentMode === 'superadmin';
+  const isWalkinMode = currentMode === 'walkin';
 
   // 管理者モードの表示制御
   const adminIndicator = document.getElementById('admin-indicator');
@@ -46,6 +47,7 @@ window.onload = async () => {
   const adminLoginBtn = document.getElementById('admin-login-btn');
   const submitButton = document.getElementById('submit-button');
   const checkInSelectedBtn = document.getElementById('check-in-selected-btn');
+  const walkinButton = document.getElementById('walkin-button');
   
   if (isSuperAdminMode) {
     if (superAdminIndicator) superAdminIndicator.style.display = 'block';
@@ -53,18 +55,28 @@ window.onload = async () => {
     if (adminLoginBtn) adminLoginBtn.style.display = 'none';
     if (submitButton) submitButton.style.display = 'none';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
+    if (walkinButton) walkinButton.style.display = 'block';
   } else if (isAdminMode) {
     if (adminIndicator) adminIndicator.style.display = 'block';
     if (superAdminIndicator) superAdminIndicator.style.display = 'none';
     if (adminLoginBtn) adminLoginBtn.style.display = 'none';
     if (submitButton) submitButton.style.display = 'none';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'block';
+    if (walkinButton) walkinButton.style.display = 'none';
+  } else if (isWalkinMode) {
+    if (adminIndicator) adminIndicator.style.display = 'none';
+    if (superAdminIndicator) superAdminIndicator.style.display = 'none';
+    if (adminLoginBtn) adminLoginBtn.style.display = 'none';
+    if (submitButton) submitButton.style.display = 'none';
+    if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
+    if (walkinButton) walkinButton.style.display = 'block';
   } else {
     if (adminIndicator) adminIndicator.style.display = 'none';
     if (superAdminIndicator) superAdminIndicator.style.display = 'none';
     if (adminLoginBtn) adminLoginBtn.style.display = 'block';
     if (submitButton) submitButton.style.display = 'block';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
+    if (walkinButton) walkinButton.style.display = 'none';
   }
 
   showLoader(true);
@@ -758,4 +770,20 @@ function endUserInteraction() {
     startAutoRefresh();
   }
 }
+
+// 当日券ページへのナビゲーション
+function navigateToWalkin() {
+  const currentMode = localStorage.getItem('currentMode') || 'normal';
+  
+  if (currentMode !== 'walkin' && currentMode !== 'superadmin') {
+    alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。');
+    return;
+  }
+  
+  // 現在のURLパラメータを使用して当日券ページに遷移
+  window.location.href = `walkin.html?group=${GROUP}&day=${DAY}&timeslot=${TIMESLOT}`;
+}
+
+// グローバル関数として登録
+window.navigateToWalkin = navigateToWalkin;
 

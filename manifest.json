@@ -1,0 +1,54 @@
+{
+  "name": "座席管理システム",
+  "short_name": "座席管理",
+  "description": "文化祭やイベント向けの座席予約・チェックイン・当日券発行システム",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ja",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/J105588/video-nazuna/main/images/IMG_5316.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/J105588/video-nazuna/main/images/IMG_5316.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "座席選択",
+      "short_name": "座席",
+      "description": "座席の選択と予約",
+      "url": "/seats.html",
+      "icons": [
+        {
+          "src": "https://raw.githubusercontent.com/J105588/video-nazuna/main/images/IMG_5316.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "当日券発行",
+      "short_name": "当日券",
+      "description": "当日券の発行",
+      "url": "/walkin.html",
+      "icons": [
+        {
+          "src": "https://raw.githubusercontent.com/J105588/video-nazuna/main/images/IMG_5316.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

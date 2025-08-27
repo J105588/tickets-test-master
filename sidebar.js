@@ -9,6 +9,10 @@ const sidebarHTML = `
       <div class="current-mode">現在: <span id="current-mode-display">通常モード</span></div>
       <button class="change-mode-btn" onclick="showModeChangeModal()">モード変更</button>
     </div>
+    <div class="navigation-section">
+      <div class="nav-title">ナビゲーション</div>
+      <a href="javascript:void(0)" onclick="navigateToWalkin()" class="nav-link" id="walkin-nav-link">当日券発行</a>
+    </div>
     <div class="debug-section">
       <button class="debug-btn" onclick="testGASConnection()">GAS疎通テスト</button>
     </div>
@@ -51,6 +55,7 @@ function loadSidebar() {
     if (container) {
         container.innerHTML = sidebarHTML;
         updateModeDisplay(); // 必要な関数を呼び出す
+        updateNavigationAccess(); // ナビゲーションアクセス制限を更新
     }
 }
 
@@ -184,6 +189,47 @@ function closeSidebar() {
     overlay.classList.remove('show');
 }
 
+// ナビゲーションアクセス制限を更新する関数
+function updateNavigationAccess() {
+    const currentMode = localStorage.getItem('currentMode') || 'normal';
+    const walkinNavLink = document.getElementById('walkin-nav-link');
+    
+    if (walkinNavLink) {
+        if (currentMode === 'walkin' || currentMode === 'superadmin') {
+            walkinNavLink.style.display = 'block';
+            walkinNavLink.style.opacity = '1';
+            walkinNavLink.style.pointerEvents = 'auto';
+        } else {
+            walkinNavLink.style.display = 'none';
+        }
+    }
+}
+
+// 当日券ページへのナビゲーション
+function navigateToWalkin() {
+    const currentMode = localStorage.getItem('currentMode') || 'normal';
+    
+    if (currentMode !== 'walkin' && currentMode !== 'superadmin') {
+        alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。');
+        return;
+    }
+    
+    // 現在のURLからパラメータを取得
+    const urlParams = new URLSearchParams(window.location.search);
+    const group = urlParams.get('group');
+    const day = urlParams.get('day');
+    const timeslot = urlParams.get('timeslot');
+    
+    if (group && day && timeslot) {
+        // 現在のページにパラメータがある場合は、それを使用
+        window.location.href = `walkin.html?group=${group}&day=${day}&timeslot=${timeslot}`;
+    } else {
+        // パラメータがない場合は、組選択ページに戻る
+        alert('公演情報が見つかりません。組選択ページから再度お試しください。');
+        window.location.href = 'index.html';
+    }
+}
+
 // グローバル変数として設定
 window.loadSidebar = loadSidebar;
 window.toggleSidebar = toggleSidebar;
@@ -191,6 +237,7 @@ window.closeSidebar = closeSidebar;
 window.showModeChangeModal = showModeChangeModal; // モーダルを表示する関数もグローバル登録
 window.closeModeModal = closeModeModal; // モーダルを閉じる関数もグローバル登録
 window.applyModeChange = applyModeChange; // モード変更を適用する関数もグローバル登録
+window.navigateToWalkin = navigateToWalkin; // 当日券ページへのナビゲーション関数もグローバル登録
 
 // GAS疎通テスト関数をグローバルに登録
 window.testGASConnection = async function() {

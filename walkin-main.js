@@ -69,10 +69,10 @@ function checkWalkinModeAccess() {
   const currentMode = localStorage.getItem('currentMode');
   const walkinBtn = document.getElementById('walkin-btn');
   
-  if (currentMode !== 'walkin' && currentMode !== 'admin') {
+  if (currentMode !== 'walkin' && currentMode !== 'superadmin') {
     walkinBtn.disabled = true;
     walkinBtn.textContent = '当日券モードでログインしてください';
-    alert('当日券発行には当日券モードまたは管理者モードでのログインが必要です。');
+    alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。');
   }
 }
 

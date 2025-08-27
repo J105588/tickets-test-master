@@ -450,6 +450,14 @@ input:checked+.slider:before {
     border-radius: 3px;
 }
 
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    margin-top: 20px;
+}
+
 .submit-button {
     width: 100%;
     /* 幅 */
@@ -465,8 +473,33 @@ input:checked+.slider:before {
     /* 角丸 */
     cursor: pointer;
     /* ポインタ */
-    margin-top: 20px;
-    /* 上部マージン */
+    max-width: 300px;
+    /* 最大幅 */
+}
+
+.walkin-button {
+    width: 100%;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    background-color: #28a745;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    max-width: 300px;
+    transition: all 0.3s ease;
+}
+
+.walkin-button:hover {
+    background-color: #1e7e34;
+    transform: translateY(-2px);
+}
+
+.walkin-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .admin-mode-indicator {
