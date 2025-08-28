@@ -230,6 +230,15 @@ input.qty-input[type=number] {
   grid-template-columns: 1fr;
   gap: 12px;
   margin-top: 16px;
+  justify-items: center;
+}
+
+/* Ensure the primary button is centered and readable */
+#walkin-open-modal.walkin-button.primary {
+  width: 100%;
+  max-width: 420px;
+  font-size: 18px;
+  padding: 18px 24px;
 }
 
 .walkin-button.primary,
@@ -256,7 +265,7 @@ input.qty-input[type=number] {
 
 @media (min-width: 480px) {
   .walkin-actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 }
 
