@@ -1,7 +1,7 @@
 import GasAPI from './api.js'; // GasAPIをインポート
 
 const sidebarHTML = `
-  <div id="mySidebar" class="sidebar">
+  <div id="sidebar-panel" class="sidebar">
     <a href="javascript:void(0)" class="closebtn" onclick="toggleSidebar()">&times;</a>
     <a href="index.html">組選択</a>
     <div class="mode-section">
@@ -161,9 +161,9 @@ function updateModeDisplay() {
 }
 
 function toggleSidebar() {
-    const sidebar = document.getElementById("mySidebar");
+    const sidebar = document.getElementById("sidebar-panel");
     if (!sidebar) {
-        console.warn('Sidebar or main content element not found');
+        console.warn('Sidebar panel element not found');
         return;
     }
     if (sidebar.classList.contains('open')) {
@@ -174,7 +174,7 @@ function toggleSidebar() {
 }
 
 function openSidebar() {
-    const sidebar = document.getElementById("mySidebar");
+    const sidebar = document.getElementById("sidebar-panel");
     const overlay = document.getElementById("sidebar-overlay");
     if (!sidebar || !overlay) return;
     sidebar.classList.add('open');
@@ -182,7 +182,7 @@ function openSidebar() {
 }
 
 function closeSidebar() {
-    const sidebar = document.getElementById("mySidebar");
+    const sidebar = document.getElementById("sidebar-panel");
     const overlay = document.getElementById("sidebar-overlay");
     if (!sidebar || !overlay) return;
     sidebar.classList.remove('open');
