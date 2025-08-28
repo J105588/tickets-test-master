@@ -778,3 +778,25 @@ input:checked+.slider:before {
     font-size: 13px;
   }
 }
+
+/* 通常モード（normal-mode）では空席以外をグレーで統一表示 */
+body.normal-mode .seat.reserved,
+body.normal-mode .seat.to-be-checked-in,
+body.normal-mode .seat.checked-in,
+body.normal-mode .seat.unavailable {
+  background: #c9cdd1 !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+body.normal-mode .seat.reserved .seat-name,
+body.normal-mode .seat.to-be-checked-in .seat-name,
+body.normal-mode .seat.checked-in .seat-name,
+body.normal-mode .seat.unavailable .seat-name {
+  color: #fff !important;
+  text-shadow: none !important;
+}
+
+body.normal-mode .seat.available { background: #28a745; }
+body.normal-mode .seat.available:hover { background: #218838; }

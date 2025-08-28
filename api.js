@@ -47,7 +47,10 @@ class GasAPI {
         let timeoutId = setTimeout(() => {
           console.error('API call timeout:', { functionName, fullUrl });
           try {
-            delete window[callbackName];
+            // 遅延応答で callback 未定義にならないよう、しばらくはNOOPを残す
+            window[callbackName] = function noop() { /* late JSONP ignored */ };
+            // 60秒後に完全クリーンアップ
+            setTimeout(() => { try { delete window[callbackName]; } catch (_) {} }, 60000);
             if (script && script.parentNode) {
               script.parentNode.removeChild(script);
             }

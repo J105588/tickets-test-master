@@ -38,8 +38,7 @@
           </div>
         </div>
         <div class="walkin-actions">
-          <button id="walkin-btn-consecutive" class="walkin-button primary" onclick="issueWalkinConsecutive()">一緒（同一行の連続席で確保）</button>
-          <button id="walkin-btn-anywhere" class="walkin-button secondary" onclick="issueWalkinAnywhere()">どこでもよい（ランダム）</button>
+          <button id="walkin-open-modal" class="walkin-button primary" onclick="openWalkinOptionModal()">空席を探して当日券を予約する</button>
         </div>
       </div>
       
@@ -64,6 +63,20 @@
       <div class="error-buttons">
         <button onclick="history.back()">戻る</button>
         <button onclick="location.reload()">再読み込み</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="walkin-option-modal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width:480px;">
+      <h3>発行方法を選択</h3>
+      <p style="color:#555;margin-top:0;">指定した枚数の座席の確保方法を選んでください。</p>
+      <div class="walkin-option-buttons">
+        <button class="walkin-button primary" onclick="issueWalkinConsecutive()">一緒（同一行の連続席で確保）</button>
+        <button class="walkin-button secondary" onclick="issueWalkinAnywhere()">どこでもよい（ランダム）</button>
+      </div>
+      <div style="text-align:right;margin-top:12px;">
+        <button class="walkin-button secondary" onclick="closeWalkinOptionModal()">閉じる</button>
       </div>
     </div>
   </div>

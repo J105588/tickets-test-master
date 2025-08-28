@@ -41,6 +41,12 @@ window.onload = async () => {
   const isSuperAdminMode = currentMode === 'superadmin';
   const isWalkinMode = currentMode === 'walkin';
 
+  // 通常モード用のクラスを付与（非空席をグレー表示するため）
+  try {
+    const isNormal = !isAdminMode && !isSuperAdminMode && !isWalkinMode;
+    document.body.classList.toggle('normal-mode', isNormal);
+  } catch (_) {}
+
   // 管理者モードの表示制御
   const adminIndicator = document.getElementById('admin-indicator');
   const superAdminIndicator = document.getElementById('superadmin-indicator');

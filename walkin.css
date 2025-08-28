@@ -258,3 +258,15 @@ input.qty-input[type=number] {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* walkin option modal buttons */
+.walkin-option-buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (min-width: 480px) {
+  .walkin-option-buttons { grid-template-columns: 1fr 1fr; }
+}

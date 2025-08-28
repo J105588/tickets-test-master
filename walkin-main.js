@@ -197,7 +197,22 @@ async function issueWalkinTicket() {
   }
 }
 
+function openWalkinOptionModal() {
+  const modal = document.getElementById('walkin-option-modal');
+  if (modal) modal.style.display = 'block';
+}
+
+function closeWalkinOptionModal() {
+  const modal = document.getElementById('walkin-option-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+// 既存の発行関数をモーダル閉鎖と併用
+const _issueConsecutiveOriginal = issueWalkinConsecutive;
+const _issueAnywhereOriginal = issueWalkinAnywhere;
+
 async function issueWalkinConsecutive() {
+  closeWalkinOptionModal();
   if (_isIssuingWalkin) return;
   _isIssuingWalkin = true;
 
@@ -254,6 +269,7 @@ async function issueWalkinConsecutive() {
 }
 
 async function issueWalkinAnywhere() {
+  closeWalkinOptionModal();
   if (_isIssuingWalkin) return;
   _isIssuingWalkin = true;
 
@@ -370,3 +386,7 @@ window.toggleSidebar = toggleSidebar;
 // グローバル関数登録（HTMLから呼ぶ）
 window.issueWalkinConsecutive = issueWalkinConsecutive;
 window.issueWalkinAnywhere = issueWalkinAnywhere;
+
+// グローバル登録
+window.openWalkinOptionModal = openWalkinOptionModal;
+window.closeWalkinOptionModal = closeWalkinOptionModal;

@@ -448,7 +448,7 @@ function checkInMultipleSeats(group, day, timeslot, seatIds) {
  */
 function assignWalkInSeat(group, day, timeslot) {
   const lock = LockService.getScriptLock();
-  if (lock.tryLock(15000)) {
+  if (lock.tryLock(5000)) {
     try {
       const sheet = getSheet(group, day, timeslot, 'SEAT');
       if (!sheet) throw new Error("対象の公演シートが見つかりませんでした。");
@@ -484,7 +484,7 @@ function assignWalkInSeat(group, day, timeslot) {
       lock.releaseLock();
     }
   } else {
-    return { success: false, message: "処理が混み合っています。しばらく時間をおいてから再度お試しください。" };
+    return { success: false, message: "処理が混み合っています。少し待ってから再度お試しください。" };
   }
 }
 
@@ -497,7 +497,7 @@ function assignWalkInSeats(group, day, timeslot, count) {
   }
 
   const lock = LockService.getScriptLock();
-  if (lock.tryLock(20000)) {
+  if (lock.tryLock(7000)) {
     try {
       const sheet = getSheet(group, day, timeslot, 'SEAT');
       if (!sheet) throw new Error("対象の公演シートが見つかりませんでした。");
@@ -521,9 +521,23 @@ function assignWalkInSeats(group, day, timeslot, count) {
 
       if (assignedSeats.length > 0) {
         // 最適化: バッチ更新で一括処理
-        updatedRows.forEach(({ row, values }) => {
-          sheet.getRange(row, 3, 1, 3).setValues([values]);
-        });
+        // できるだけ連続する行をまとめて書き込む
+        let runStart = 0;
+        while (runStart < updatedRows.length) {
+          let runEnd = runStart;
+          // 連続行の塊を検出
+          while (
+            runEnd + 1 < updatedRows.length &&
+            updatedRows[runEnd + 1].row === updatedRows[runEnd].row + 1
+          ) {
+            runEnd++;
+          }
+          const block = updatedRows.slice(runStart, runEnd + 1);
+          const startRow = block[0].row;
+          const values = block.map(b => b.values);
+          sheet.getRange(startRow, 3, values.length, 3).setValues(values);
+          runStart = runEnd + 1;
+        }
 
         SpreadsheetApp.flush();
         return { 
@@ -541,7 +555,7 @@ function assignWalkInSeats(group, day, timeslot, count) {
       lock.releaseLock();
     }
   } else {
-    return { success: false, message: "処理が混み合っています。しばらく時間をおいてから再度お試しください。" };
+    return { success: false, message: "処理が混み合っています。少し待ってから再度お試しください。" };
   }
 }
 
@@ -555,7 +569,7 @@ function assignWalkInConsecutiveSeats(group, day, timeslot, count) {
   }
 
   const lock = LockService.getScriptLock();
-  if (lock.tryLock(20000)) {
+  if (lock.tryLock(7000)) {
     try {
       const sheet = getSheet(group, day, timeslot, 'SEAT');
       if (!sheet) throw new Error('対象の公演シートが見つかりませんでした。');
@@ -617,11 +631,12 @@ function assignWalkInConsecutiveSeats(group, day, timeslot, count) {
 
       // バッチ更新
       const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy/MM/dd HH:mm:ss');
-      assigned.forEach(colNum => {
-        const idx = rowColToIndex[assignedRow + colNum];
-        // update C,D,E (予約済, 当日券_..., 空)
-        sheet.getRange(idx + 2, 3, 1, 3).setValues([[ '予約済', `当日券_${timestamp}`, '' ]]);
-      });
+      // 連続席なので一括書き込み
+      const startCol = assigned[0];
+      const rows = assigned.map(colNum => rowColToIndex[assignedRow + colNum] + 2).sort((a,b)=>a-b);
+      const runStartRow = rows[0];
+      const values = assigned.map(() => ['予約済', `当日券_${timestamp}`, '']);
+      sheet.getRange(runStartRow, 3, values.length, 3).setValues(values);
 
       SpreadsheetApp.flush();
       const seatIds = assigned.map(c => assignedRow + c);
@@ -634,7 +649,7 @@ function assignWalkInConsecutiveSeats(group, day, timeslot, count) {
       lock.releaseLock();
     }
   } else {
-    return { success: false, message: '処理が混み合っています。しばらく時間をおいてから再度お試しください。' };
+    return { success: false, message: '処理が混み合っています。少し待ってから再度お試しください。' };
   }
 }
 
