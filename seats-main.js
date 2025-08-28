@@ -328,7 +328,8 @@ function createSeatElement(seatData) {
   const seat = document.createElement('div');
   seat.className = `seat ${seatData.status}`;
   seat.dataset.id = seatData.id;
-  
+
+  // fuck 山田一
   // 座席IDを表示
   const seatIdEl = document.createElement('div');
   seatIdEl.className = 'seat-id';
