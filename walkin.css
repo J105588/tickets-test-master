@@ -125,6 +125,7 @@ input.qty-input::-webkit-inner-spin-button {
 
 input.qty-input[type=number] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* 成功・エラー通知 */
