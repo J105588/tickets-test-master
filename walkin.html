@@ -37,7 +37,10 @@
             <button type="button" class="qty-btn" id="qty-increase" aria-label="増やす">＋</button>
           </div>
         </div>
-        <button id="walkin-btn" class="walkin-button" onclick="issueWalkinTicket()">空席を探して当日券を発行する</button>
+        <div class="walkin-actions">
+          <button id="walkin-btn-consecutive" class="walkin-button primary" onclick="issueWalkinConsecutive()">一緒（同一行の連続席で確保）</button>
+          <button id="walkin-btn-anywhere" class="walkin-button secondary" onclick="issueWalkinAnywhere()">どこでもよい（ランダム）</button>
+        </div>
       </div>
       
       <div id="reservation-result" class="reservation-result">

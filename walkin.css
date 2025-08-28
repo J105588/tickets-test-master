@@ -222,3 +222,39 @@ input.qty-input[type=number] {
     font-size: 13px;
   }
 }
+
+/* walkin actions */
+.walkin-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.walkin-button.primary,
+.walkin-button.secondary {
+  padding: 16px 20px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+.walkin-button.primary {
+  background: #007bff;
+  color: #fff;
+}
+.walkin-button.primary:active { opacity: .9; }
+
+.walkin-button.secondary {
+  background: #6c757d;
+  color: #fff;
+}
+.walkin-button.secondary:active { opacity: .9; }
+
+@media (min-width: 480px) {
+  .walkin-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+}

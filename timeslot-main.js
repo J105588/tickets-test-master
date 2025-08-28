@@ -10,22 +10,30 @@ import * as timeSlotConfig from './timeslot-schedules.js';
 
 // --- 初期化処理 (ページの読み込み時に自動で実行されます) ---
 
-const urlParams = new URLSearchParams(window.location.search);
-const group = urlParams.get('group');
+(async () => {
+  try {
+    if (window.systemLockReady && typeof window.systemLockReady.then === 'function') {
+      await window.systemLockReady;
+    }
+  } catch (_) {}
 
-// 組名をページのタイトル部分に表示
-document.getElementById('group-name').textContent = isNaN(parseInt(group)) ? group : group + '組';
+  const urlParams = new URLSearchParams(window.location.search);
+  const group = urlParams.get('group');
 
-// サイドバーを読み込んでページに配置
-loadSidebar();
+  // 組名をページのタイトル部分に表示
+  document.getElementById('group-name').textContent = isNaN(parseInt(group)) ? group : group + '組';
 
-// 時間帯データを読み込んで表示
-loadTimeslots(group);
+  // サイドバーを読み込んでページに配置
+  loadSidebar();
 
-// --- グローバル関数の登録 ---
-// HTMLの onclick="..." から呼び出せるように、関数をwindowオブジェクトに登録します。
-window.toggleSidebar = toggleSidebar;
-window.selectTimeslot = selectTimeslot;
+  // 時間帯データを読み込んで表示
+  loadTimeslots(group);
+
+  // --- グローバル関数の登録 ---
+  // HTMLの onclick="..." から呼び出せるように、関数をwindowオブジェクトに登録します。
+  window.toggleSidebar = toggleSidebar;
+  window.selectTimeslot = selectTimeslot;
+})();
 
 // --- 関数定義 ---
 
@@ -36,6 +44,8 @@ window.selectTimeslot = selectTimeslot;
  */
 function selectTimeslot(day, timeslot) {
   // URLから管理者モードかどうかを判断
+  const urlParams = new URLSearchParams(window.location.search);
+  const group = urlParams.get('group');
   const isAdmin = urlParams.get('admin') === 'true';
   
   // 現在のモードをLocalStorageから取得

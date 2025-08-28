@@ -44,6 +44,7 @@ function doPost(e) {
       'checkInMultipleSeats': checkInMultipleSeats,
       'assignWalkInSeat': assignWalkInSeat,
       'assignWalkInSeats': assignWalkInSeats,
+      'assignWalkInConsecutiveSeats': assignWalkInConsecutiveSeats,
       'verifyModePassword': verifyModePassword,
       'updateSeatData': updateSeatData,
       'updateMultipleSeats': updateMultipleSeats, // 新規: 複数座席一括更新
@@ -108,6 +109,7 @@ function doGet(e) {
         'checkInMultipleSeats': checkInMultipleSeats,
         'assignWalkInSeat': assignWalkInSeat,
         'assignWalkInSeats': assignWalkInSeats,
+        'assignWalkInConsecutiveSeats': assignWalkInConsecutiveSeats,
         'verifyModePassword': verifyModePassword,
         'updateSeatData': updateSeatData,
         'updateMultipleSeats': updateMultipleSeats, // 新規: 複数座席一括更新
@@ -540,6 +542,99 @@ function assignWalkInSeats(group, day, timeslot, count) {
     }
   } else {
     return { success: false, message: "処理が混み合っています。しばらく時間をおいてから再度お試しください。" };
+  }
+}
+
+/**
+ * 当日券発行：同一行で連続した席を指定枚数分確保する。
+ * 行をまたぐ連続は不可。
+ */
+function assignWalkInConsecutiveSeats(group, day, timeslot, count) {
+  if (!count || count < 1 || count > 12) {
+    return { success: false, message: '有効な枚数を指定してください（1〜12枚）' };
+  }
+
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(20000)) {
+    try {
+      const sheet = getSheet(group, day, timeslot, 'SEAT');
+      if (!sheet) throw new Error('対象の公演シートが見つかりませんでした。');
+
+      // A(row), B(col), C(status)
+      const data = sheet.getRange('A2:C' + sheet.getLastRow()).getValues();
+
+      // 行ごとに空席の列番号を収集
+      const rowToAvailableCols = { 'A': [], 'B': [], 'C': [], 'D': [], 'E': [] };
+      const rowColToIndex = {}; // key: row+col -> data index for later updates
+
+      for (let i = 0; i < data.length; i++) {
+        const r = String(data[i][0]);
+        const c = parseInt(data[i][1], 10);
+        const status = data[i][2];
+        if (!rowToAvailableCols.hasOwnProperty(r)) continue;
+        if (!isValidSeatId(r + c)) continue;
+        rowColToIndex[r + c] = i; // store index
+        if (status === '空') {
+          rowToAvailableCols[r].push(c);
+        }
+      }
+
+      // 各行で昇順ソート
+      Object.keys(rowToAvailableCols).forEach(r => rowToAvailableCols[r].sort((a,b)=>a-b));
+
+      // 連続席を探す関数
+      const findConsecutive = (arr, need) => {
+        if (arr.length < need) return null;
+        let runStart = 0;
+        for (let i = 1; i <= arr.length; i++) {
+          if (i === arr.length || arr[i] !== arr[i-1] + 1) {
+            const runLen = i - runStart;
+            if (runLen >= need) {
+              // 最初の連続ブロックから必要数を返す
+              return arr.slice(runStart, runStart + need);
+            }
+            runStart = i;
+          }
+        }
+        return null;
+      };
+
+      // A->Eの順で探索（必要なら優先順位変更可）
+      let assigned = null;
+      let assignedRow = null;
+      for (const rowLabel of ['A','B','C','D','E']) {
+        const seq = findConsecutive(rowToAvailableCols[rowLabel], count);
+        if (seq) {
+          assigned = seq;
+          assignedRow = rowLabel;
+          break;
+        }
+      }
+
+      if (!assigned) {
+        return { success: false, message: '指定枚数の連続席が見つかりませんでした。' };
+      }
+
+      // バッチ更新
+      const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy/MM/dd HH:mm:ss');
+      assigned.forEach(colNum => {
+        const idx = rowColToIndex[assignedRow + colNum];
+        // update C,D,E (予約済, 当日券_..., 空)
+        sheet.getRange(idx + 2, 3, 1, 3).setValues([[ '予約済', `当日券_${timestamp}`, '' ]]);
+      });
+
+      SpreadsheetApp.flush();
+      const seatIds = assigned.map(c => assignedRow + c);
+      return { success: true, message: `連続席(${count}席)を確保しました。\n座席: ${seatIds.join(', ')}`, seatIds };
+
+    } catch (e) {
+      Logger.log('assignWalkInConsecutiveSeats Error: ' + e.message + '\n' + e.stack);
+      return { success: false, message: `エラーが発生しました: ${e.message}` };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { success: false, message: '処理が混み合っています。しばらく時間をおいてから再度お試しください。' };
   }
 }
 

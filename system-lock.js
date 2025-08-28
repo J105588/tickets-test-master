@@ -3,6 +3,15 @@ import errorHandler from './error-handler.js';
 
 class SystemLock {
   constructor() {
+    // 初回ロック確認の完了を通知するPromise
+    try {
+      if (!window.systemLockReady) {
+        window.systemLockReady = new Promise((resolve) => {
+          this._resolveReady = resolve;
+        });
+      }
+    } catch (_) {}
+    this._readyResolved = false;
     this.init();
   }
 
@@ -38,6 +47,13 @@ class SystemLock {
         }
       };
 
+      const resolveReadyOnce = () => {
+        if (!this._readyResolved && this._resolveReady) {
+          try { this._resolveReady(); } catch (_) {}
+          this._readyResolved = true;
+        }
+      };
+
       const tick = async () => {
         try {
           const status = await GasAPI.getSystemLock();
@@ -59,6 +75,9 @@ class SystemLock {
           errorHandler.handleError(error, 'lock', () => {
             console.warn('System lock check failed, maintaining lock state for safety');
           });
+        } finally {
+          // 初回チェック完了を通知
+          resolveReadyOnce();
         }
       };
 
@@ -70,6 +89,11 @@ class SystemLock {
       errorHandler.handleError(error, 'lock', () => {
         console.warn('Failed to start system lock watcher, disabling lock feature');
       });
+      // 例外時も待機中の初期化を解除
+      if (!this._readyResolved && this._resolveReady) {
+        try { this._resolveReady(); } catch (_) {}
+        this._readyResolved = true;
+      }
     }
   }
 }

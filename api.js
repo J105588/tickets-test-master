@@ -199,6 +199,11 @@ class GasAPI {
     return response;
   }
 
+  static async assignWalkInConsecutiveSeats(group, day, timeslot, count) {
+    const response = await this._callApi('assignWalkInConsecutiveSeats', [group, day, timeslot, count]);
+    return response;
+  }
+
   static async updateSeatData(group, day, timeslot, seatId, columnC, columnD, columnE) {
     const response = await this._callApi('updateSeatData', [group, day, timeslot, seatId, columnC, columnD, columnE]);
     return response;

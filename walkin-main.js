@@ -14,7 +14,12 @@ const TIMESLOT = urlParams.get('timeslot');
 let _isIssuingWalkin = false;
 
 // 初期化
-window.onload = () => {
+window.onload = async () => {
+  try {
+    if (window.systemLockReady && typeof window.systemLockReady.then === 'function') {
+      await window.systemLockReady;
+    }
+  } catch (_) {}
   // サイドバー読み込み
   loadSidebar();
   
@@ -192,6 +197,125 @@ async function issueWalkinTicket() {
   }
 }
 
+async function issueWalkinConsecutive() {
+  if (_isIssuingWalkin) return;
+  _isIssuingWalkin = true;
+
+  const walkinBtn = document.getElementById('walkin-btn-consecutive');
+  const anywhereBtn = document.getElementById('walkin-btn-anywhere');
+  const reservationResult = document.getElementById('reservation-result');
+  const reservedSeatEl = document.getElementById('reserved-seat');
+  const countInput = document.getElementById('walkin-count');
+  const num = Math.max(1, Math.min(6, parseInt(countInput ? countInput.value : '1', 10) || 1));
+
+  walkinBtn.disabled = true; if (anywhereBtn) anywhereBtn.disabled = true;
+  walkinBtn.textContent = '連続席を検索中...';
+  showLoader(true);
+  reservationResult.classList.remove('show');
+
+  try {
+    const response = await GasAPI.assignWalkInConsecutiveSeats(GROUP, DAY, TIMESLOT, num);
+    if (response.success) {
+      showLoader(false);
+      showSuccessNotification(response.message || '座席が確保されました。');
+
+      let seats = [];
+      if (response.seatId) seats = [response.seatId];
+      if (response.seatIds && Array.isArray(response.seatIds)) seats = response.seatIds;
+
+      if (seats.length === 1) {
+        walkinBtn.textContent = `発行完了 (座席: ${seats[0]})`;
+        reservedSeatEl.textContent = seats[0];
+      } else {
+        walkinBtn.textContent = `発行完了 (${seats.length}席)`;
+        reservedSeatEl.textContent = seats.join(' / ');
+      }
+      reservationResult.classList.add('show');
+
+      setTimeout(() => {
+        walkinBtn.disabled = false; if (anywhereBtn) anywhereBtn.disabled = false;
+        walkinBtn.textContent = '一緒（同一行の連続席で確保）';
+      }, 3000);
+    } else {
+      showLoader(false);
+      showErrorNotification(response.message || '連続席が見つかりませんでした。');
+      walkinBtn.disabled = false; if (anywhereBtn) anywhereBtn.disabled = false;
+      walkinBtn.textContent = '一緒（同一行の連続席で確保）';
+    }
+  } catch (error) {
+    console.error('連続席発行エラー:', error);
+    showLoader(false);
+    showErrorNotification(`連続席発行中にエラーが発生しました: ${error.message || '不明なエラー'}`);
+    walkinBtn.disabled = false; if (anywhereBtn) anywhereBtn.disabled = false;
+    walkinBtn.textContent = '一緒（同一行の連続席で確保）';
+  } finally {
+    _isIssuingWalkin = false;
+  }
+}
+
+async function issueWalkinAnywhere() {
+  if (_isIssuingWalkin) return;
+  _isIssuingWalkin = true;
+
+  const consecBtn = document.getElementById('walkin-btn-consecutive');
+  const walkinBtn = document.getElementById('walkin-btn-anywhere');
+  const reservationResult = document.getElementById('reservation-result');
+  const reservedSeatEl = document.getElementById('reserved-seat');
+  const countInput = document.getElementById('walkin-count');
+  const num = Math.max(1, Math.min(6, parseInt(countInput ? countInput.value : '1', 10) || 1));
+
+  walkinBtn.disabled = true; if (consecBtn) consecBtn.disabled = true;
+  walkinBtn.textContent = '空席を検索中...';
+  showLoader(true);
+  reservationResult.classList.remove('show');
+
+  try {
+    let response;
+    if (num === 1) {
+      response = await GasAPI.assignWalkInSeat(GROUP, DAY, TIMESLOT);
+    } else {
+      response = await GasAPI.assignWalkInSeats(GROUP, DAY, TIMESLOT, num);
+    }
+
+    if (response.success) {
+      showLoader(false);
+      showSuccessNotification(response.message || '座席が確保されました。');
+
+      let seats = [];
+      if (response.seatId) seats = [response.seatId];
+      if (response.seatIds && Array.isArray(response.seatIds)) seats = response.seatIds;
+
+      if (seats.length === 1) {
+        walkinBtn.textContent = `発行完了 (座席: ${seats[0]})`;
+        reservedSeatEl.textContent = seats[0];
+      } else {
+        walkinBtn.textContent = `発行完了 (${seats.length}席)`;
+        reservedSeatEl.textContent = seats.join(' / ');
+      }
+      reservationResult.classList.add('show');
+
+      setTimeout(() => {
+        walkinBtn.disabled = false; if (consecBtn) consecBtn.disabled = false;
+        walkinBtn.textContent = 'どこでもよい（ランダム）';
+      }, 3000);
+    } else {
+      showLoader(false);
+      showErrorNotification(response.message || '空席が見つかりませんでした。');
+      walkinBtn.disabled = false; if (consecBtn) consecBtn.disabled = false;
+      walkinBtn.textContent = 'どこでもよい（ランダム）';
+    }
+  } catch (error) {
+    console.error('当日券発行エラー:', error);
+    showLoader(false);
+    const errorMessage = error.message || '不明なエラーが発生しました';
+    showErrorNotification(`当日券発行中にエラーが発生しました: ${errorMessage}`);
+    walkinBtn.disabled = false; if (consecBtn) consecBtn.disabled = false;
+    walkinBtn.textContent = 'どこでもよい（ランダム）';
+  } finally {
+    _isIssuingWalkin = false;
+  }
+}
+
 // 成功通知を表示する関数（非ブロッキング）
 function showSuccessNotification(message) {
   const notification = document.createElement('div');
@@ -242,3 +366,7 @@ function showErrorNotification(message) {
 window.issueWalkinTicket = issueWalkinTicket;
 window.showLoader = showLoader;
 window.toggleSidebar = toggleSidebar;
+
+// グローバル関数登録（HTMLから呼ぶ）
+window.issueWalkinConsecutive = issueWalkinConsecutive;
+window.issueWalkinAnywhere = issueWalkinAnywhere;
