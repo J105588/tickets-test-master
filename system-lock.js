@@ -16,13 +16,8 @@ class SystemLock {
   }
 
   async init() {
-    // ロック状態の監視はページ安定後・アイドル時に開始（他機能を最優先）
-    const deferStart = () => this.startSystemLockWatcher();
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(deferStart, { timeout: 5000 });
-    } else {
-      window.addEventListener('load', () => setTimeout(deferStart, 1500));
-    }
+    // ロック状態の監視は即座に開始（他機能と同時実行）
+    this.startSystemLockWatcher();
   }
 
   async startSystemLockWatcher() {
@@ -81,8 +76,8 @@ class SystemLock {
         }
       };
 
-      // 初回は軽く遅延してUIをブロックしない
-      setTimeout(tick, 1000);
+      // 初回は即座に実行（他機能と同時実行）
+      tick();
       // ポーリング間隔は30秒（低負荷）
       setInterval(tick, 30000);
     } catch (error) {

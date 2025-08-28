@@ -234,11 +234,18 @@ input.qty-input[type=number] {
 }
 
 /* Ensure the primary button is centered and readable */
-#walkin-open-modal.walkin-button.primary {
+#walkin-open-modal-btn.walkin-button.primary {
   width: 100%;
-  max-width: 420px;
+  max-width: 600px;
   font-size: 18px;
   padding: 18px 24px;
+  background: #28a745;
+  border-color: #28a745;
+}
+
+#walkin-open-modal-btn.walkin-button.primary:hover {
+  background: #218838;
+  border-color: #218838;
 }
 
 .walkin-button.primary,
@@ -275,6 +282,27 @@ input.qty-input[type=number] {
   grid-template-columns: 1fr;
   gap: 12px;
   margin-top: 8px;
+}
+
+/* モーダル内の選択肢ボタンの色 */
+.walkin-option-buttons .walkin-button.primary {
+  background: #007bff;
+  border-color: #007bff;
+}
+
+.walkin-option-buttons .walkin-button.primary:hover {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+
+.walkin-option-buttons .walkin-button.secondary {
+  background: #fd7e14;
+  border-color: #fd7e14;
+}
+
+.walkin-option-buttons .walkin-button.secondary:hover {
+  background: #e8690b;
+  border-color: #e8690b;
 }
 
 @media (min-width: 480px) {
