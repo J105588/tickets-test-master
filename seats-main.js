@@ -463,6 +463,15 @@ function handleNormalSeatClick(seatData) {
   // 利用可能な座席のみ選択可能
   if (seatData.status !== 'available') {
     console.log('この座席は選択できません:', seatData.status);
+    // ユーザーに分かりやすいメッセージを表示
+    const statusMessages = {
+      'reserved': 'この座席は既に予約されています',
+      'to-be-checked-in': 'この座席は既に予約されています',
+      'checked-in': 'この座席は既にチェックイン済みです',
+      'unavailable': 'この座席は利用できません'
+    };
+    const message = statusMessages[seatData.status] || 'この座席は選択できません';
+    alert(message);
     return;
   }
 
@@ -494,7 +503,7 @@ function updateSelectedSeatsDisplay() {
   const submitButton = document.getElementById('submit-button');
   if (submitButton) {
     if (selectedSeats.length > 0) {
-      submitButton.textContent = `この席で予約する (${selectedSeats.length}席)`;
+      submitButton.textContent = `この席で予約する (${selectedSeats.length}席: ${selectedSeats.join(', ')})`;
       submitButton.disabled = false;
     } else {
       submitButton.textContent = 'この席で予約する';
@@ -718,7 +727,7 @@ async function checkInSelected() {
 // 予約確認・実行関数（最適化版）
 async function confirmReservation() {
   if (selectedSeats.length === 0) {
-    alert('予約する座席を選択してください。');
+    alert('予約する座席を選択してください。\n\n利用可能な座席（緑色）をクリックして選択してから、予約ボタンを押してください。');
     return;
   }
 
@@ -727,6 +736,9 @@ async function confirmReservation() {
     return;
   }
 
+  // 選択された座席のコピーを作成（API呼び出し用）
+  const seatsToReserve = [...selectedSeats];
+  
   // 楽観的更新：即座にUIを更新（予約済みとして表示）
   
   // 選択された座席を即座に予約済みとして表示
@@ -755,7 +767,7 @@ async function confirmReservation() {
   showLoader(true);
   
   try {
-    const response = await GasAPI.reserveSeats(GROUP, DAY, TIMESLOT, selectedSeats);
+    const response = await GasAPI.reserveSeats(GROUP, DAY, TIMESLOT, seatsToReserve);
     
     if (response.success) {
       // 成功時：即座に成功メッセージを表示（ローダーは非表示）

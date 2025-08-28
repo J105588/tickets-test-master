@@ -182,10 +182,16 @@ function getSeatData(group, day, timeslot, isAdmin = false, isSuperAdmin = false
         columnD: nameD 
       };
 
+      // ステータスに基づいて座席の状態を設定
       if (statusC === '予約済') {
         seat.status = 'to-be-checked-in';
       } else if (statusC === '確保') {
         seat.status = 'reserved';
+      } else if (statusC === '空' || statusC === '' || statusC === null || statusC === undefined) {
+        seat.status = 'available';
+      } else {
+        // その他の値（設定なしなど）は unavailable として扱う
+        seat.status = 'unavailable';
       }
 
       // 管理者の場合のみ名前を追加
@@ -239,10 +245,16 @@ function getSeatDataMinimal(group, day, timeslot, isAdmin = false) {
         status: 'available'
       };
 
+      // ステータスに基づいて座席の状態を設定
       if (statusC === '予約済') {
         seat.status = 'to-be-checked-in';
       } else if (statusC === '確保') {
         seat.status = 'reserved';
+      } else if (statusC === '空' || statusC === '' || statusC === null || statusC === undefined) {
+        seat.status = 'available';
+      } else {
+        // その他の値（設定なしなど）は unavailable として扱う
+        seat.status = 'unavailable';
       }
       
       seatMap[seatId] = seat;
