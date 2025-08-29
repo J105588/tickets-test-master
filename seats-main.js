@@ -63,7 +63,6 @@ window.onload = async () => {
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
     if (walkinButton) {
       walkinButton.style.display = 'block';
-      updateWalkinButtonState();
     }
   } else if (isAdminMode) {
     if (adminIndicator) adminIndicator.style.display = 'block';
@@ -71,10 +70,7 @@ window.onload = async () => {
     if (adminLoginBtn) adminLoginBtn.style.display = 'none';
     if (submitButton) submitButton.style.display = 'none';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'block';
-    if (walkinButton) {
-      walkinButton.style.display = 'block';
-      updateWalkinButtonState();
-    }
+    if (walkinButton) walkinButton.style.display = 'none';
   } else if (isWalkinMode) {
     if (adminIndicator) adminIndicator.style.display = 'none';
     if (superAdminIndicator) superAdminIndicator.style.display = 'none';
@@ -83,7 +79,6 @@ window.onload = async () => {
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
     if (walkinButton) {
       walkinButton.style.display = 'block';
-      updateWalkinButtonState();
     }
   } else {
     if (adminIndicator) adminIndicator.style.display = 'none';
@@ -91,10 +86,7 @@ window.onload = async () => {
     if (adminLoginBtn) adminLoginBtn.style.display = 'block';
     if (submitButton) submitButton.style.display = 'block';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
-    if (walkinButton) {
-      walkinButton.style.display = 'block';
-      updateWalkinButtonState();
-    }
+    if (walkinButton) walkinButton.style.display = 'none';
   }
 
   showLoader(true);
@@ -156,13 +148,6 @@ window.onload = async () => {
     updateLastUpdateTime();
     
       startAutoRefresh();
-  
-  // モード変更時のイベントリスナーを追加
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'currentMode') {
-      updateWalkinButtonState();
-    }
-  });
 } catch (error) {
   console.error('サーバー通信失敗:', error);
     
@@ -980,23 +965,7 @@ function navigateToWalkin() {
   window.location.href = `walkin.html?group=${GROUP}&day=${DAY}&timeslot=${TIMESLOT}`;
 }
 
-// 当日券ボタンの状態を更新する関数
-function updateWalkinButtonState() {
-  const currentMode = localStorage.getItem('currentMode') || 'normal';
-  const walkinButton = document.getElementById('walkin-button');
-  
-  if (walkinButton) {
-    if (currentMode === 'walkin' || currentMode === 'superadmin') {
-      walkinButton.disabled = false;
-      walkinButton.textContent = '当日券発行';
-      walkinButton.classList.remove('disabled-mode');
-    } else {
-      walkinButton.disabled = true;
-      walkinButton.textContent = '当日券モードでログインしてください';
-      walkinButton.classList.add('disabled-mode');
-    }
-  }
-}
+
 
 // グローバル関数として登録
 window.navigateToWalkin = navigateToWalkin;
