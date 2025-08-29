@@ -336,21 +336,126 @@
 
 ### 🔗 依存関係図
 
+```mermaid
+graph TD
+    %% HTMLファイル
+    A[index.html] --> B[index-main.js]
+    A --> C[system-lock.js]
+    A --> D[styles.css]
+    A --> E[sidebar.css]
+    
+    F[timeslot.html] --> G[config.js]
+    F --> H[timeslot-main.js]
+    F --> D
+    F --> E
+    
+    I[seats.html] --> G
+    I --> J[api.js]
+    I --> K[sidebar.js]
+    I --> L[seats-main.js]
+    I --> D
+    I --> E
+    I --> M[seats.css]
+    
+    N[walkin.html] --> G
+    N --> J
+    N --> K
+    N --> O[walkin-main.js]
+    N --> D
+    N --> E
+    N --> P[walkin.css]
+    
+    %% JavaScriptファイルの依存関係
+    B --> K
+    B --> C
+    
+    H --> J
+    H --> K
+    H --> Q[timeslot-schedules.js]
+    
+    L --> J
+    L --> K
+    L --> G
+    
+    O --> J
+    O --> K
+    
+    K --> J
+    
+    C --> R[error-handler.js]
+    C --> J
+    
+    %% 設定ファイル
+    G --> S[GAS API]
+    
+    %% バックエンド（Google Apps Script）
+    S --> X[Code.gs]
+    S --> Y[SpreadsheetIds.gs]
+    S --> Z[system-setting.gs]
+    S --> AA[TimeSlotConfig.gs]
+    
+    %% データフロー
+    Q --> BB[時間帯設定データ]
+    J --> S
+    S --> CC[Google Spreadsheet]
+    
+    %% スタイルシート
+    D --> T[共通スタイル]
+    E --> U[サイドバースタイル]
+    M --> V[座席管理スタイル]
+    P --> W[当日券スタイル]
+    
+    %% 主要な依存関係の強調
+    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef api fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef style fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef backend fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class G,J,S core
+    class K,H,L,O api
+    class D,E,M,P style
+    class X,Y,Z,AA backend
 ```
-フロントエンド依存関係:
-config.js ← api.js ← (全JSファイル)
-config.js ← sidebar.js ← (全HTMLファイル)
-styles.css ← (全CSSファイル)
-api.js ← sidebar.js ← seats-main.js, walkin-main.js, timeslot-main.js, index-main.js
 
-バックエンド依存関係:
-SpreadsheetIds.gs ← Code.gs
-TimeSlotConfig.gs ← Code.gs
-system-setting.gs (独立)
+この依存関係図は以下の構造を示しています：
 
-ファイル間依存:
-HTML → CSS → JS → API → GAS → Spreadsheet
-```
+#### 主要な依存関係
+
+**1. エントリーポイント**
+- `index.html` → 組選択画面
+- `timeslot.html` → 時間帯選択画面  
+- `seats.html` → 座席選択・管理画面
+- `walkin.html` → 当日券発行画面
+
+**2. コアモジュール**
+- `config.js` - API設定とデバッグ設定
+- `api.js` - Google Apps Script APIとの通信
+- `sidebar.js` - 共通サイドバー機能
+- `system-lock.js` - システムロック機能
+
+**3. 画面別メインロジック**
+- `index-main.js` - 組選択画面の処理
+- `timeslot-main.js` - 時間帯選択画面の処理
+- `seats-main.js` - 座席管理画面の処理
+- `walkin-main.js` - 当日券発行画面の処理
+
+**4. データ・設定**
+- `timeslot-schedules.js` - 時間帯設定データ
+- `error-handler.js` - エラーハンドリング
+
+**5. スタイルシート**
+- `styles.css` - 共通スタイル
+- `sidebar.css` - サイドバー専用スタイル
+- `seats.css` - 座席管理専用スタイル
+- `walkin.css` - 当日券専用スタイル
+
+**6. バックエンド（Google Apps Script）**
+- `Code.gs` - メインのGASコード
+- `SpreadsheetIds.gs` - スプレッドシートID管理
+- `system-setting.gs` - システム設定
+- `TimeSlotConfig.gs` - 時間帯設定
+
+このシステムは、フロントエンド（HTML/JS/CSS）とバックエンド（Google Apps Script）が分離されたアーキテクチャで、各画面が独立して動作しながらも共通のモジュールを共有する設計になっています。
 
 ### 📋 各ファイルの詳細機能
 
