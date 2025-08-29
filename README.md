@@ -230,21 +230,207 @@
 ## 📄 ライセンス
 - リポジトリの `LICENSE` を参照
 
-## 📁 ファイル一覧（要点）
+## 📁 ファイル一覧と詳細機能説明
 
-### フロントエンド
-- `index.html` / `index-main.js`: 組選択 + サイドバー読込
-- `timeslot.html` / `timeslot-main.js` / `timeslot-schedules.js`: 時間帯選択（フロント固定データ）
-- `seats.html` / `seats-main.js` / `seats.css`: 座席表示・予約・チェックイン・最高管理者編集
-- `walkin.html` / `walkin-main.js` / `walkin.css`: 当日券発行
+### 🌐 フロントエンド（HTML/CSS/JS）
 
-### 共通・設定
-- `sidebar.js` / `sidebar.css`: サイドバーとモード切替
-- `api.js` / `config.js`: GAS API 呼び出し（JSONP）と設定
-- `styles.css`: 全体スタイル
+#### メインページ
+- **`index.html`**: 組選択ページのメインHTML
+  - サイドバーコンテナ、組選択UI、基本レイアウト
+  - 依存: `styles.css`, `sidebar.css`, `config.js`, `api.js`, `sidebar.js`, `index-main.js`
+- **`index-main.js`**: 組選択ページのメインロジック
+  - 組一覧の表示、選択時のナビゲーション処理
+  - 依存: `config.js`, `api.js`, `sidebar.js`
 
-### バックエンド（GAS）
-- `Code.gs` / `TimeSlotConfig.gs` / `SpreadsheetIds.gs` / `system-setting.gs`: GAS 側ロジック
+- **`timeslot.html`**: 時間帯選択ページのメインHTML
+  - 時間帯選択UI、ナビゲーション要素
+  - 依存: `styles.css`, `sidebar.css`, `config.js`, `api.js`, `sidebar.js`, `timeslot-main.js`
+- **`timeslot-main.js`**: 時間帯選択ページのメインロジック
+  - 時間帯一覧の表示、選択時のページ遷移処理
+  - 依存: `config.js`, `api.js`, `sidebar.js`, `timeslot-schedules.js`
+- **`timeslot-schedules.js`**: 時間帯スケジュール定義
+  - 各組の時間帯データ（フロントエンド固定）
+  - 依存: なし（独立したデータファイル）
+
+- **`seats.html`**: 座席選択・予約ページのメインHTML
+  - 座席マップ表示エリア、操作ボタン、自動更新設定UI
+  - 依存: `styles.css`, `sidebar.css`, `seats.css`, `config.js`, `api.js`, `sidebar.js`, `seats-main.js`
+- **`seats-main.js`**: 座席選択・予約ページのメインロジック
+  - 座席マップ描画、予約処理、チェックイン処理、最高管理者編集機能
+  - 自動更新機能、楽観的更新、エラーハンドリング
+  - 依存: `config.js`, `api.js`, `sidebar.js`, `seats.css`
+- **`seats.css`**: 座席選択ページ専用スタイル
+  - 座席マップレイアウト、座席状態別色分け、モーダル、自動更新設定UI
+  - 依存: `styles.css`（基本スタイル継承）
+
+- **`walkin.html`**: 当日券発行ページのメインHTML
+  - 当日券発行UI、枚数選択、発行方法選択モーダル
+  - 依存: `styles.css`, `sidebar.css`, `walkin.css`, `config.js`, `api.js`, `sidebar.js`, `walkin-main.js`
+- **`walkin-main.js`**: 当日券発行ページのメインロジック
+  - 当日券発行処理、枚数選択、連続席/ランダム選択機能
+  - アクセス制限、エラーハンドリング
+  - 依存: `config.js`, `api.js`, `sidebar.js`, `walkin.css`
+- **`walkin.css`**: 当日券ページ専用スタイル
+  - 当日券UI、枚数選択、通知、モーダルスタイル
+  - 依存: `styles.css`（基本スタイル継承）
+
+#### 共通・設定ファイル
+- **`config.js`**: システム設定とデバッグ機能
+  - GAS API URL、フェイルオーバーURL、デバッグモード設定
+  - デバッグログ機能
+  - 依存: なし（他のファイルから参照される）
+- **`api.js`**: GAS API呼び出し機能
+  - JSONP通信、エラーハンドリング、フェイルオーバー機能
+  - 全API関数のラッパー、コンソールコマンド（SeatApp）
+  - 依存: `config.js`
+- **`styles.css`**: 全体共通スタイル
+  - 基本レイアウト、ボタン、フォーム、モーダル、レスポンシブ対応
+  - 依存: なし（他のCSSファイルの基盤）
+- **`sidebar.js`**: サイドバーとモード管理機能
+  - サイドバー表示制御、モード切替UI、パスワード認証
+  - ナビゲーション制御、GAS疎通テスト
+  - 依存: `config.js`, `api.js`
+- **`sidebar.css`**: サイドバー専用スタイル
+  - サイドバーレイアウト、モード切替モーダル、ナビゲーション
+  - 依存: `styles.css`（基本スタイル継承）
+
+#### システム管理
+- **`system-lock.js`**: システムロック機能
+  - グローバルロック状態管理、ロック/アンロック処理
+  - 依存: `config.js`, `api.js`
+- **`error-handler.js`**: エラーハンドリング機能
+  - グローバルエラーキャッチ、エラー表示、ログ機能
+  - 依存: `config.js`
+
+### 🔧 バックエンド（Google Apps Script）
+
+#### メインAPI
+- **`Code.gs`**: メインAPI処理とビジネスロジック
+  - **API ルーター**: `doGet`/`doPost`によるJSONP通信処理
+  - **座席管理**: `getSeatData`, `getSeatDataMinimal` - 座席データ取得
+  - **予約機能**: `reserveSeats` - 複数座席予約
+  - **チェックイン機能**: `checkInSeat`, `checkInMultipleSeats` - 単体/複数チェックイン
+  - **当日券機能**: `assignWalkInSeat`, `assignWalkInSeats`, `assignWalkInConsecutiveSeats` - 当日券発行
+  - **最高管理者機能**: `updateSeatData`, `updateMultipleSeats` - 座席データ編集
+  - **認証機能**: `verifyModePassword` - モード別パスワード認証
+  - **システム管理**: `getSystemLock`, `setSystemLock` - システムロック制御
+  - **危険コマンド**: `execDangerCommand` - コンソール専用危険操作
+  - **テスト機能**: `testApi` - 全機能疎通テスト
+  - **エラー処理**: `reportError` - クライアントエラー報告
+  - **ヘルパー関数**: `isValidSeatId`, `getSheet` - 共通処理
+  - 依存: `TimeSlotConfig.gs`, `SpreadsheetIds.gs`
+
+#### 設定・データ管理
+- **`SpreadsheetIds.gs`**: スプレッドシートID管理
+  - 公演別スプレッドシートID定義、シート名設定
+  - 座席シート、ログシートのID管理
+  - 依存: なし（Code.gsから参照される）
+- **`TimeSlotConfig.gs`**: 時間帯設定管理
+  - 組別時間帯データ定義、時間帯取得API
+  - フロントエンドとバックエンドの時間帯データ同期
+  - 依存: なし（Code.gsから参照される）
+- **`system-setting.gs`**: システム設定ユーティリティ
+  - パスワード設定、初期化処理
+  - システム設定の一括管理
+  - 依存: なし（手動実行用）
+
+### 🔗 依存関係図
+
+```
+フロントエンド依存関係:
+config.js ← api.js ← (全JSファイル)
+config.js ← sidebar.js ← (全HTMLファイル)
+styles.css ← (全CSSファイル)
+api.js ← sidebar.js ← seats-main.js, walkin-main.js, timeslot-main.js, index-main.js
+
+バックエンド依存関係:
+SpreadsheetIds.gs ← Code.gs
+TimeSlotConfig.gs ← Code.gs
+system-setting.gs (独立)
+
+ファイル間依存:
+HTML → CSS → JS → API → GAS → Spreadsheet
+```
+
+### 📋 各ファイルの詳細機能
+
+#### フロントエンド機能詳細
+
+**`index-main.js`**
+- 組一覧の動的生成
+- 組選択時のURLパラメータ構築
+- サイドバー初期化
+- エラーハンドリング
+
+**`timeslot-main.js`**
+- 組別時間帯データの取得・表示
+- 時間帯選択時のページ遷移制御
+- 管理者モード判定とナビゲーション調整
+- データ検証とエラーハンドリング
+
+**`seats-main.js`**
+- 座席マップの動的描画（A-E行、1-12列）
+- 座席状態の視覚的表現（色分け、クラス管理）
+- 予約処理（楽観的更新、バックグラウンド同期）
+- チェックイン処理（単体・複数対応）
+- 最高管理者編集機能（モーダル、データ更新）
+- 自動更新機能（30秒間隔、操作中一時停止）
+- 当日券ボタン制御（モード別表示）
+- エラー通知システム（非ブロッキング）
+- ユーザー操作検知と自動更新制御
+
+**`walkin-main.js`**
+- アクセス制限（当日券モード・最高管理者モードのみ）
+- 枚数選択UI制御（1-6枚、±ボタン）
+- 当日券発行処理（連続席・ランダム選択）
+- 発行結果表示とエラーハンドリング
+- モード変更時の即座リダイレクト
+
+**`api.js`**
+- JSONP通信の実装（コールバック、タイムアウト、エラーハンドリング）
+- フェイルオーバー機能（複数URL対応）
+- 全GAS API関数のラッパー
+- エラー報告機能
+- コンソールコマンド（SeatApp）の提供
+- 通信状態の詳細ログ
+
+**`sidebar.js`**
+- サイドバーの表示・非表示制御
+- モード切替UI（通常・管理者・当日券・最高管理者）
+- パスワード認証処理
+- ナビゲーション制御（当日券ページアクセス制限）
+- GAS疎通テスト機能
+- モード変更時のページリロード
+
+#### バックエンド機能詳細
+
+**`Code.gs`**
+- **API ルーター**: JSONP形式でのリクエスト・レスポンス処理
+- **座席データ管理**: スプレッドシートからの座席情報取得・正規化
+- **予約システム**: 座席予約処理（ロック機能、競合制御）
+- **チェックインシステム**: 予約済み座席のチェックイン処理
+- **当日券システム**: 空席の自動割り当て（単体・複数・連続席）
+- **最高管理者機能**: 座席データの直接編集（C・D・E列）
+- **認証システム**: モード別パスワード検証
+- **システムロック**: グローバルロック状態の管理
+- **危険コマンド**: コンソール専用の破壊的操作
+- **テスト機能**: 全機能の疎通確認
+- **エラー処理**: 包括的なエラーハンドリングとログ
+
+**`SpreadsheetIds.gs`**
+- 公演別スプレッドシートIDの管理
+- シート名の統一管理
+- 座席データとログデータの分離
+
+**`TimeSlotConfig.gs`**
+- 組別時間帯データの定義
+- 時間帯取得APIの提供
+- フロントエンドとのデータ同期
+
+**`system-setting.gs`**
+- システム初期化処理
+- パスワード設定の一括管理
+- 設定値の検証と更新
 
 ---
 
