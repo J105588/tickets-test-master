@@ -502,6 +502,13 @@ input:checked+.slider:before {
     transform: none;
 }
 
+.walkin-button.disabled-mode {
+    background-color: #6c757d !important;
+    color: #adb5bd !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
 .admin-mode-indicator {
     position: absolute;
     top: 15px;

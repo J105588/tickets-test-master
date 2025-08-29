@@ -33,7 +33,22 @@ window.onload = async () => {
   `;
   
   // 当日券モードのアクセス制限をチェック
-  checkWalkinModeAccess();
+  const hasAccess = checkWalkinModeAccess();
+  
+  // アクセス権限がない場合は、以降の処理をスキップ
+  if (!hasAccess) {
+    return;
+  }
+  
+  // モード変更時のイベントリスナーを追加
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'currentMode') {
+      const newHasAccess = checkWalkinModeAccess();
+      if (!newHasAccess) {
+        return; // アクセス権限がなくなった場合は自動的にリダイレクトされる
+      }
+    }
+  });
 
   // 枚数 +/- ボタンイベント
   const input = document.getElementById('walkin-count');
@@ -73,15 +88,36 @@ window.onload = async () => {
 // 当日券モードのアクセス制限をチェックする関数
 function checkWalkinModeAccess() {
   const currentMode = localStorage.getItem('currentMode');
-  const walkinBtn = document.getElementById('walkin-open-modal-btn');
   
   if (currentMode !== 'walkin' && currentMode !== 'superadmin') {
-    if (walkinBtn) {
-      walkinBtn.disabled = true;
-      walkinBtn.textContent = '当日券モードでログインしてください';
+    // アクセス権限がない場合は、座席選択ページにリダイレクト
+    const urlParams = new URLSearchParams(window.location.search);
+    const group = urlParams.get('group');
+    const day = urlParams.get('day');
+    const timeslot = urlParams.get('timeslot');
+    
+    if (group && day && timeslot) {
+      // 座席選択ページにリダイレクト
+      window.location.href = `seats.html?group=${group}&day=${day}&timeslot=${timeslot}`;
+    } else {
+      // パラメータがない場合は組選択ページにリダイレクト
+      window.location.href = 'index.html';
     }
-    alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。');
+    
+    // リダイレクト前にメッセージを表示
+    alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。\n座席選択ページに移動します。');
+    return false;
   }
+  
+  // アクセス権限がある場合は、ボタンを有効化
+  const walkinBtn = document.getElementById('walkin-open-modal-btn');
+  if (walkinBtn) {
+    walkinBtn.disabled = false;
+    walkinBtn.textContent = '当日券を発行する';
+    walkinBtn.classList.remove('disabled-mode');
+  }
+  
+  return true;
 }
 
 function showLoader(visible) {

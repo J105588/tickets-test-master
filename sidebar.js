@@ -210,7 +210,7 @@ function navigateToWalkin() {
     const currentMode = localStorage.getItem('currentMode') || 'normal';
     
     if (currentMode !== 'walkin' && currentMode !== 'superadmin') {
-        alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。');
+        alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。\nサイドバーからモードを変更してください。');
         return;
     }
     

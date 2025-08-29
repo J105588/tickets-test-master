@@ -61,28 +61,40 @@ window.onload = async () => {
     if (adminLoginBtn) adminLoginBtn.style.display = 'none';
     if (submitButton) submitButton.style.display = 'none';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
-    if (walkinButton) walkinButton.style.display = 'block';
+    if (walkinButton) {
+      walkinButton.style.display = 'block';
+      updateWalkinButtonState();
+    }
   } else if (isAdminMode) {
     if (adminIndicator) adminIndicator.style.display = 'block';
     if (superAdminIndicator) superAdminIndicator.style.display = 'none';
     if (adminLoginBtn) adminLoginBtn.style.display = 'none';
     if (submitButton) submitButton.style.display = 'none';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'block';
-    if (walkinButton) walkinButton.style.display = 'none';
+    if (walkinButton) {
+      walkinButton.style.display = 'block';
+      updateWalkinButtonState();
+    }
   } else if (isWalkinMode) {
     if (adminIndicator) adminIndicator.style.display = 'none';
     if (superAdminIndicator) superAdminIndicator.style.display = 'none';
     if (adminLoginBtn) adminLoginBtn.style.display = 'none';
     if (submitButton) submitButton.style.display = 'none';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
-    if (walkinButton) walkinButton.style.display = 'block';
+    if (walkinButton) {
+      walkinButton.style.display = 'block';
+      updateWalkinButtonState();
+    }
   } else {
     if (adminIndicator) adminIndicator.style.display = 'none';
     if (superAdminIndicator) superAdminIndicator.style.display = 'none';
     if (adminLoginBtn) adminLoginBtn.style.display = 'block';
     if (submitButton) submitButton.style.display = 'block';
     if (checkInSelectedBtn) checkInSelectedBtn.style.display = 'none';
-    if (walkinButton) walkinButton.style.display = 'none';
+    if (walkinButton) {
+      walkinButton.style.display = 'block';
+      updateWalkinButtonState();
+    }
   }
 
   showLoader(true);
@@ -143,9 +155,16 @@ window.onload = async () => {
     // 最終更新時間の初期表示
     updateLastUpdateTime();
     
-    startAutoRefresh();
-  } catch (error) {
-    console.error('サーバー通信失敗:', error);
+      startAutoRefresh();
+  
+  // モード変更時のイベントリスナーを追加
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'currentMode') {
+      updateWalkinButtonState();
+    }
+  });
+} catch (error) {
+  console.error('サーバー通信失敗:', error);
     
     // エラー表示を改善
     const errorContainer = document.getElementById('error-container');
@@ -953,12 +972,30 @@ function navigateToWalkin() {
   const currentMode = localStorage.getItem('currentMode') || 'normal';
   
   if (currentMode !== 'walkin' && currentMode !== 'superadmin') {
-    alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。');
+    alert('当日券発行には当日券モードまたは最高管理者モードでのログインが必要です。\nサイドバーからモードを変更してください。');
     return;
   }
   
   // 現在のURLパラメータを使用して当日券ページに遷移
   window.location.href = `walkin.html?group=${GROUP}&day=${DAY}&timeslot=${TIMESLOT}`;
+}
+
+// 当日券ボタンの状態を更新する関数
+function updateWalkinButtonState() {
+  const currentMode = localStorage.getItem('currentMode') || 'normal';
+  const walkinButton = document.getElementById('walkin-button');
+  
+  if (walkinButton) {
+    if (currentMode === 'walkin' || currentMode === 'superadmin') {
+      walkinButton.disabled = false;
+      walkinButton.textContent = '当日券発行';
+      walkinButton.classList.remove('disabled-mode');
+    } else {
+      walkinButton.disabled = true;
+      walkinButton.textContent = '当日券モードでログインしてください';
+      walkinButton.classList.add('disabled-mode');
+    }
+  }
 }
 
 // グローバル関数として登録
