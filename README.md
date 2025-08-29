@@ -336,21 +336,194 @@
 
 ### 🔗 依存関係図
 
+### フロントエンド依存関係
 ```
-フロントエンド依存関係:
 config.js ← api.js ← (全JSファイル)
 config.js ← sidebar.js ← (全HTMLファイル)
 styles.css ← (全CSSファイル)
 api.js ← sidebar.js ← seats-main.js, walkin-main.js, timeslot-main.js, index-main.js
+```
 
-バックエンド依存関係:
+### バックエンド依存関係
+```
 SpreadsheetIds.gs ← Code.gs
 TimeSlotConfig.gs ← Code.gs
 system-setting.gs (独立)
+```
 
-ファイル間依存:
+### ファイル間依存
+```
 HTML → CSS → JS → API → GAS → Spreadsheet
 ```
+
+### 視覚的依存関係図
+
+#### フロントエンド依存関係
+```mermaid
+graph TD
+    subgraph "設定・共通"
+        A[config.js]
+        B[styles.css]
+    end
+    
+    subgraph "API層"
+        C[api.js]
+    end
+    
+    subgraph "UI層"
+        D[sidebar.js]
+        E[sidebar.css]
+    end
+    
+    subgraph "ページ別JS"
+        F[index-main.js]
+        G[timeslot-main.js]
+        H[seats-main.js]
+        I[walkin-main.js]
+    end
+    
+    subgraph "ページ別CSS"
+        J[seats.css]
+        K[walkin.css]
+    end
+    
+    subgraph "ページ別HTML"
+        L[index.html]
+        M[timeslot.html]
+        N[seats.html]
+        O[walkin.html]
+    end
+    
+    A --> C
+    A --> D
+    C --> D
+    C --> F
+    C --> G
+    C --> H
+    C --> I
+    D --> F
+    D --> G
+    D --> H
+    D --> I
+    B --> E
+    B --> J
+    B --> K
+    E --> L
+    E --> M
+    E --> N
+    E --> O
+    F --> L
+    G --> M
+    H --> N
+    I --> O
+    J --> N
+    K --> O
+```
+
+#### バックエンド依存関係
+```mermaid
+graph TD
+    subgraph "Google Apps Script"
+        A[Code.gs]
+        B[SpreadsheetIds.gs]
+        C[TimeSlotConfig.gs]
+        D[system-setting.gs]
+    end
+    
+    subgraph "Google Spreadsheet"
+        E[座席データ]
+        F[ログデータ]
+    end
+    
+    A --> B
+    A --> C
+    A --> E
+    A --> F
+    D -.->|独立| D
+```
+
+#### システム全体の依存関係
+```mermaid
+graph TB
+    subgraph "フロントエンド"
+        A[HTML Pages]
+        B[CSS Files]
+        C[JavaScript Files]
+    end
+    
+    subgraph "設定・API"
+        D[config.js]
+        E[api.js]
+    end
+    
+    subgraph "Google Apps Script"
+        F[Code.gs]
+        G[SpreadsheetIds.gs]
+        H[TimeSlotConfig.gs]
+        I[system-setting.gs]
+    end
+    
+    subgraph "データストア"
+        J[Google Spreadsheet]
+    end
+    
+    A --> B
+    A --> C
+    C --> D
+    C --> E
+    E --> F
+    F --> G
+    F --> H
+    F --> J
+    I -.->|独立| I
+```
+
+#### データフロー
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant H as HTML
+    participant C as CSS
+    participant J as JavaScript
+    participant A as API
+    participant G as GAS
+    participant S as Spreadsheet
+    
+    U->>H: ページアクセス
+    H->>C: スタイル適用
+    H->>J: スクリプト実行
+    J->>A: API呼び出し
+    A->>G: JSONP通信
+    G->>S: データ読み書き
+    S-->>G: データ返却
+    G-->>A: レスポンス
+    A-->>J: データ受信
+    J->>H: UI更新
+    H->>U: 結果表示
+```
+
+### 依存関係の詳細説明
+
+#### フロントエンド依存関係
+- **`config.js`**: 全システムの設定ファイル。API URL、デバッグ設定など
+- **`api.js`**: GASとの通信を担当。全JSファイルから参照される
+- **`sidebar.js`**: サイドバーとモード管理。全HTMLファイルで使用
+- **`styles.css`**: 基本スタイル。全CSSファイルの基盤
+- **各ページJS**: 対応するHTMLファイルの機能を実装
+
+#### バックエンド依存関係
+- **`Code.gs`**: メインのAPI処理。他のGASファイルから設定を参照
+- **`SpreadsheetIds.gs`**: スプレッドシートID管理。Code.gsから参照
+- **`TimeSlotConfig.gs`**: 時間帯設定。Code.gsから参照
+- **`system-setting.gs`**: 独立した設定ユーティリティ
+
+#### データフロー
+1. **HTML**: ユーザーインターフェース
+2. **CSS**: スタイリングとレイアウト
+3. **JavaScript**: ビジネスロジックとAPI通信
+4. **API**: フロントエンドとバックエンドの橋渡し
+5. **GAS**: サーバーサイド処理
+6. **Spreadsheet**: データストレージ
 
 ### 📋 各ファイルの詳細機能
 
