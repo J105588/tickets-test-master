@@ -312,7 +312,49 @@ function updateSeatMapWithMinimalData(minimalSeatMap) {
         
         // 色を更新
         updateSeatColor(seatEl, minimalData.status);
+        
+        // ステータステキストも更新
+        updateSeatStatusText(seatEl, minimalData.status);
       }
+    }
+  });
+}
+
+// 完全なデータで座席マップを更新する関数
+function updateSeatMapWithCompleteData(completeSeatMap) {
+  // 既存の座席要素を取得
+  const existingSeats = document.querySelectorAll('.seat');
+  
+  existingSeats.forEach(seatEl => {
+    const seatId = seatEl.dataset.id;
+    const completeData = completeSeatMap[seatId];
+    
+    if (completeData) {
+      // ステータスが変更された場合のみ更新
+      const currentStatus = seatEl.dataset.status;
+      if (currentStatus !== completeData.status) {
+        // ステータスを更新
+        seatEl.dataset.status = completeData.status;
+        
+        // クラスを更新
+        seatEl.className = 'seat';
+        seatEl.classList.add(completeData.status);
+        
+        // 色を更新
+        updateSeatColor(seatEl, completeData.status);
+        
+        // ステータステキストを更新
+        updateSeatStatusText(seatEl, completeData.status);
+      }
+      
+      // 名前を更新（管理者モードと最高管理者モードで表示）
+      updateSeatName(seatEl, completeData);
+      
+      // その他のデータを更新（最高管理者モード用）
+      updateSeatAdditionalData(seatEl, completeData);
+      
+      // チェックイン可能フラグを更新
+      updateSeatCheckinFlag(seatEl, completeData);
     }
   });
 }
@@ -1009,6 +1051,83 @@ function updateSeatColor(seatEl, status) {
   seatEl.classList.add(status);
 }
 
+// 座席のステータステキストを更新する関数
+function updateSeatStatusText(seatEl, status) {
+  // ステータス表示要素を取得
+  const statusEl = seatEl.querySelector('.seat-status');
+  if (statusEl) {
+    statusEl.textContent = getStatusText(status);
+  }
+}
+
+// 座席の名前を更新する関数
+function updateSeatName(seatEl, seatData) {
+  const currentMode = localStorage.getItem('currentMode') || 'normal';
+  const isAdminMode = currentMode === 'admin' || IS_ADMIN;
+  const isSuperAdminMode = currentMode === 'superadmin';
+  
+  // 管理者モードまたは最高管理者モードで、かつ予約済み以上の座席の場合のみ名前を表示
+  if ((isAdminMode || isSuperAdminMode) && seatData.name && seatData.status !== 'available') {
+    let nameEl = seatEl.querySelector('.seat-name');
+    
+    // 名前要素が存在しない場合は作成
+    if (!nameEl) {
+      nameEl = document.createElement('div');
+      nameEl.className = 'seat-name';
+      seatEl.appendChild(nameEl);
+    }
+    
+    // 名前を更新
+    if (seatData.name.length > 8) {
+      nameEl.textContent = seatData.name.substring(0, 8) + '...';
+      nameEl.title = seatData.name; // ツールチップで全文表示
+    } else {
+      nameEl.textContent = seatData.name;
+    }
+  } else {
+    // 通常モードまたは名前が不要な場合は名前要素を削除
+    const nameEl = seatEl.querySelector('.seat-name');
+    if (nameEl) {
+      nameEl.remove();
+    }
+  }
+}
+
+// 座席の追加データを更新する関数（最高管理者モード用）
+function updateSeatAdditionalData(seatEl, seatData) {
+  const currentMode = localStorage.getItem('currentMode') || 'normal';
+  const isSuperAdminMode = currentMode === 'superadmin';
+  
+  if (isSuperAdminMode) {
+    // C、D、E列のデータを更新
+    if (seatData.columnC !== undefined) {
+      seatEl.dataset.columnC = seatData.columnC;
+    }
+    if (seatData.columnD !== undefined) {
+      seatEl.dataset.columnD = seatData.columnD;
+    }
+    if (seatData.columnE !== undefined) {
+      seatEl.dataset.columnE = seatData.columnE;
+    }
+  }
+}
+
+// 座席のチェックイン可能フラグを更新する関数
+function updateSeatCheckinFlag(seatEl, seatData) {
+  const currentMode = localStorage.getItem('currentMode') || 'normal';
+  const isAdminMode = currentMode === 'admin' || IS_ADMIN;
+  
+  if (isAdminMode && (seatData.status === 'to-be-checked-in' || seatData.status === 'reserved')) {
+    // チェックイン可能な座席を選択可能にする
+    seatEl.classList.add('checkin-selectable');
+    seatEl.dataset.seatName = seatData.name || '';
+  } else {
+    // チェックイン不可能な場合はフラグを削除
+    seatEl.classList.remove('checkin-selectable');
+    delete seatEl.dataset.seatName;
+  }
+}
+
 // ステータスのテキストを取得する関数
 function getStatusText(status) {
   const statusMap = {
@@ -1073,10 +1192,25 @@ async function refreshSeatData() {
     const isAdminMode = currentMode === 'admin' || IS_ADMIN;
     const isSuperAdminMode = currentMode === 'superadmin';
     
-    const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
+    // 手動更新時も最小限のデータで十分な場合は最小限データを使用
+    let seatData;
+    if (isAdminMode || isSuperAdminMode) {
+      // 管理者モードの場合は完全なデータを取得
+      seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
+    } else {
+      // 通常モードの場合は最小限のデータを取得（高速化）
+      seatData = await GasAPI.getSeatDataMinimal(GROUP, DAY, TIMESLOT, isAdminMode);
+    }
     
     if (seatData.success) {
-      drawSeatMap(seatData.seatMap);
+      // 最小限データの場合は既存の座席データとマージ
+      if (seatData.seatMap && Object.keys(seatData.seatMap).length > 0) {
+        // 既存の座席データを保持しつつ、ステータスのみ更新
+        updateSeatMapWithMinimalData(seatData.seatMap);
+      } else {
+        // 完全なデータの場合は通常通り更新
+        drawSeatMap(seatData.seatMap);
+      }
       updateLastUpdateTime();
     }
   } catch (error) {
