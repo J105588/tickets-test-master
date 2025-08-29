@@ -306,9 +306,9 @@ function updateSeatMapWithMinimalData(minimalSeatMap) {
         // ステータスが変更された場合のみ更新
         seatEl.dataset.status = minimalData.status;
         
-        // クラスを更新
+        // クラスを更新（CSSは `.seat.available` 等を参照）
         seatEl.className = 'seat';
-        seatEl.classList.add(`status-${minimalData.status}`);
+        seatEl.classList.add(minimalData.status);
         
         // 色を更新
         updateSeatColor(seatEl, minimalData.status);
@@ -982,7 +982,7 @@ function updateSeatElement(seatEl, seatData) {
   
   // クラスを更新
   seatEl.className = 'seat';
-  seatEl.classList.add(`status-${seatData.status}`);
+  seatEl.classList.add(seatData.status);
   
   // 座席名を更新
   const nameEl = seatEl.querySelector('.seat-name');
@@ -1003,10 +1003,10 @@ function updateSeatElement(seatEl, seatData) {
 // 座席の色を更新する関数
 function updateSeatColor(seatEl, status) {
   // 既存の色クラスを削除
-  seatEl.classList.remove('status-available', 'status-reserved', 'status-checked-in', 'status-unavailable');
+  seatEl.classList.remove('available', 'reserved', 'checked-in', 'unavailable');
   
   // 新しいステータスクラスを追加
-  seatEl.classList.add(`status-${status}`);
+  seatEl.classList.add(status);
 }
 
 // ステータスのテキストを取得する関数

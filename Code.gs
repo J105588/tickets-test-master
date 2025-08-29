@@ -52,7 +52,8 @@ function doPost(e) {
       'testApi': testApi,
       'reportError': reportError,
       'getSystemLock': getSystemLock,
-      'setSystemLock': setSystemLock
+      'setSystemLock': setSystemLock,
+      'execDangerCommand': execDangerCommand
     };
 
     if (functionMap[funcName]) {
@@ -117,7 +118,8 @@ function doGet(e) {
         'testApi': testApi,
         'reportError': reportError,
         'getSystemLock': getSystemLock,
-        'setSystemLock': setSystemLock
+        'setSystemLock': setSystemLock,
+        'execDangerCommand': execDangerCommand
       };
 
       if (functionMap[funcName]) {
@@ -158,8 +160,8 @@ function getSeatData(group, day, timeslot, isAdmin = false, isSuperAdmin = false
       return { success: true, seatMap: {} };
     }
     
-    // 最適化: 必要な列のみ取得（A, C, D, E列）
-    const dataRange = sheet.getRange("A2:D" + lastRow);
+    // 必要列を取得（A, B, C, D, E列）
+    const dataRange = sheet.getRange("A2:E" + lastRow);
     const data = dataRange.getValues();
     const seatMap = {};
 
@@ -171,23 +173,28 @@ function getSeatData(group, day, timeslot, isAdmin = false, isSuperAdmin = false
       const seatId = String(rowLabel) + String(colLabel);
       if (!isValidSeatId(seatId)) return;
 
-      const statusC = row[2];
-      const nameD = row[3];
+      // 正規化（トリム）
+      const statusC = (row[2] || '').toString().trim();
+      const nameD = (row[3] || '').toString();
+      const statusE = (row[4] || '').toString().trim();
 
       // 最適化: 必要最小限のデータのみ含める
       const seat = { 
         id: seatId, 
         status: 'available', 
         columnC: statusC, 
-        columnD: nameD 
+        columnD: nameD,
+        columnE: statusE
       };
 
       // ステータスに基づいて座席の状態を設定
-      if (statusC === '予約済') {
+      if (statusC === '予約済' && statusE === '済') {
+        seat.status = 'checked-in';
+      } else if (statusC === '予約済') {
         seat.status = 'to-be-checked-in';
       } else if (statusC === '確保') {
         seat.status = 'reserved';
-      } else if (statusC === '空' || statusC === '' || statusC === null || statusC === undefined) {
+      } else if (statusC === '空' || statusC === '') {
         seat.status = 'available';
       } else {
         // その他の値（設定なしなど）は unavailable として扱う
@@ -224,8 +231,8 @@ function getSeatDataMinimal(group, day, timeslot, isAdmin = false) {
       return { success: true, seatMap: {} };
     }
     
-    // 最適化: ステータスのみ取得（C列）
-    const dataRange = sheet.getRange("A2:C" + lastRow);
+    // ステータスのみ取得（C列とE列を使用するため A〜E を取得）
+    const dataRange = sheet.getRange("A2:E" + lastRow);
     const data = dataRange.getValues();
     const seatMap = {};
 
@@ -237,7 +244,8 @@ function getSeatDataMinimal(group, day, timeslot, isAdmin = false) {
       const seatId = String(rowLabel) + String(colLabel);
       if (!isValidSeatId(seatId)) return;
 
-      const statusC = row[2];
+      const statusC = (row[2] || '').toString().trim();
+      const statusE = (row[4] || '').toString().trim();
       
       // 最適化: ステータスのみ
       const seat = { 
@@ -246,11 +254,13 @@ function getSeatDataMinimal(group, day, timeslot, isAdmin = false) {
       };
 
       // ステータスに基づいて座席の状態を設定
-      if (statusC === '予約済') {
+      if (statusC === '予約済' && statusE === '済') {
+        seat.status = 'checked-in';
+      } else if (statusC === '予約済') {
         seat.status = 'to-be-checked-in';
       } else if (statusC === '確保') {
         seat.status = 'reserved';
-      } else if (statusC === '空' || statusC === '' || statusC === null || statusC === undefined) {
+      } else if (statusC === '空' || statusC === '') {
         seat.status = 'available';
       } else {
         // その他の値（設定なしなど）は unavailable として扱う
@@ -921,5 +931,129 @@ function setSystemLock(shouldLock, password) {
   } catch (e) {
     Logger.log('setSystemLock Error: ' + e.message);
     return { success: false, error: e.message };
+  }
+}
+
+/**
+ * 最高危険度コマンド（多者承認が必要）
+ * initiate → token を発行し一時保存、confirm を2回以上で実行。
+ */
+function initiateDangerCommand(action, payload, expireSeconds) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const token = Utilities.getUuid();
+    const now = Date.now();
+    const ttl = Math.max(30, Math.min(10 * 60, parseInt(expireSeconds || 120, 10))) * 1000; // 30s〜10min、既定120s
+    const record = {
+      token: token,
+      action: action,
+      payload: payload || {},
+      confirmations: [],
+      createdAt: now,
+      expiresAt: now + ttl
+    };
+    props.setProperty('DANGER_CMD_' + token, JSON.stringify(record));
+    return { success: true, token: token, expiresAt: new Date(record.expiresAt).toISOString() };
+  } catch (e) {
+    Logger.log('initiateDangerCommand Error: ' + e.message);
+    return { success: false, message: e.message };
+  }
+}
+
+function confirmDangerCommand(token, password, confirmerId) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const superAdminPassword = props.getProperty('SUPERADMIN_PASSWORD');
+    if (!superAdminPassword || password !== superAdminPassword) {
+      return { success: false, message: '認証に失敗しました' };
+    }
+    const key = 'DANGER_CMD_' + token;
+    const raw = props.getProperty(key);
+    if (!raw) return { success: false, message: 'トークンが無効または期限切れです' };
+    const rec = JSON.parse(raw);
+    const now = Date.now();
+    if (now > rec.expiresAt) {
+      props.deleteProperty(key);
+      return { success: false, message: 'トークンが期限切れです' };
+    }
+    const id = (confirmerId || '') + '';
+    if (id) {
+      if (!rec.confirmations.includes(id)) rec.confirmations.push(id);
+    } else {
+      // ID未指定でも1カウント扱いだが、同一ブラウザで重複しない保障はない
+      rec.confirmations.push(Utilities.getUuid());
+    }
+    const required = 2;
+    if (rec.confirmations.length >= required) {
+      // 実行
+      const result = performDangerAction(rec.action, rec.payload);
+      props.deleteProperty(key);
+      return { success: true, executed: true, result: result };
+    } else {
+      props.setProperty(key, JSON.stringify(rec));
+      return { success: true, executed: false, pending: required - rec.confirmations.length };
+    }
+  } catch (e) {
+    Logger.log('confirmDangerCommand Error: ' + e.message);
+    return { success: false, message: e.message };
+  }
+}
+
+function listDangerPending() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const all = props.getProperties();
+    const now = Date.now();
+    const items = [];
+    Object.keys(all).forEach(k => {
+      if (k.indexOf('DANGER_CMD_') === 0) {
+        try {
+          const rec = JSON.parse(all[k]);
+          if (rec && now <= rec.expiresAt) {
+            items.push({ token: rec.token, action: rec.action, confirmations: (rec.confirmations||[]).length, expiresAt: new Date(rec.expiresAt).toISOString() });
+          }
+        } catch (_) {}
+      }
+    });
+    return { success: true, items: items };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+function performDangerAction(action, payload) {
+  if (action === 'purgeReservationsForShow') {
+    const group = payload && payload.group;
+    const day = payload && payload.day;
+    const timeslot = payload && payload.timeslot;
+    const sheet = getSheet(group, day, timeslot, 'SEAT');
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { success: true, message: '対象座席なし' };
+    // C,D,E を一律 初期化（空, '', ''）。座席定義と一致しない行も上書きされ得るため要注意
+    const numRows = lastRow - 1;
+    const values = new Array(numRows).fill(0).map(() => ['空', '', '']);
+    sheet.getRange(2, 3, numRows, 3).setValues(values);
+    SpreadsheetApp.flush();
+    return { success: true, message: '該当公演の予約・チェックイン情報を初期化しました' };
+  }
+  return { success: false, message: '未知のアクション: ' + action };
+}
+
+/**
+ * コンソール専用の危険コマンド実行（パスワード必須、承認不要）
+ * Usage (Browser console only):
+ *   await SeatApp.exec('purgeReservationsForShow', {group:'見本演劇', day:'1', timeslot:'A'}, 'SUPERADMIN_PASSWORD');
+ */
+function execDangerCommand(action, payload, password) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const superAdminPassword = props.getProperty('SUPERADMIN_PASSWORD');
+    if (!superAdminPassword || password !== superAdminPassword) {
+      return { success: false, message: '認証に失敗しました' };
+    }
+    return performDangerAction(action, payload || {});
+  } catch (e) {
+    Logger.log('execDangerCommand Error: ' + e.message);
+    return { success: false, message: e.message };
   }
 }

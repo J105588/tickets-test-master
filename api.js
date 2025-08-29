@@ -172,8 +172,8 @@ class GasAPI {
     return response;
   }
 
-  static async getSeatData(group, day, timeslot, isAdmin) {
-    const response = await this._callApi('getSeatData', [group, day, timeslot, isAdmin]);
+  static async getSeatData(group, day, timeslot, isAdmin, isSuperAdmin = false) {
+    const response = await this._callApi('getSeatData', [group, day, timeslot, isAdmin, isSuperAdmin]);
     return response;
   }
 
@@ -252,6 +252,10 @@ if (typeof window !== 'undefined') {
     return GasAPI.setSystemLock(false, password);
   };
   window.SeatApp.status = async () => GasAPI.getSystemLock();
+  // 危険コマンド（ブラウザコンソール専用）
+  window.SeatApp.exec = async (action, payload, password) => {
+    return GasAPI._callApi('execDangerCommand', [action, payload, password]);
+  };
 }
 
 
