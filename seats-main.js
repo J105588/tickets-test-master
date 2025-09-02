@@ -2,8 +2,10 @@
 import GasAPI from './api.js';
 import { loadSidebar, toggleSidebar, showModeChangeModal, applyModeChange, closeModeModal } from './sidebar.js';
 import { GAS_API_URL, DEBUG_MODE, debugLog } from './config.js';
-import { offlineSync } from './offline-sync.js';
+import { fallbackManager } from './fallback-manager.js';
 import { priorityLoader } from './priority-loader.js';
+import { systemStatus } from './system-status.js';
+import { errorHandler } from './error-handler-enhanced.js';
 
 /**
  * 座席選択画面のメイン処理
@@ -101,33 +103,22 @@ window.onload = async () => {
     
     console.log('GasAPI.getSeatData呼び出し:', { GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode });
     
-    // オフライン対応: パフォーマンスIDを設定
+    // フォールバック対応: パフォーマンスIDを設定
     const performanceId = `${GROUP}_${DAY}_${TIMESLOT}`;
-    offlineSync.setPerformanceId(performanceId);
+    await fallbackManager.setPerformanceId(performanceId);
     
-    // 優先度付きで座席データを取得
+    // 優先度付きで座席データを取得（フォールバック対応）
     let seatData;
-    if (offlineSync.isOnlineStatus()) {
+    if (fallbackManager.isOnlineStatus()) {
       // オンライン時は高優先度でサーバーから取得
       seatData = await priorityLoader.loadHigh(async () => {
-        return await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
+        return await fallbackManager.getSeatsData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
       });
     } else {
       // オフライン時は通常優先度でローカルから取得
       seatData = await priorityLoader.loadNormal(async () => {
         console.log('オフライン状態のためローカルデータを使用');
-        const localSeats = await offlineSync.getSeats(performanceId);
-        const localReservations = await offlineSync.getReservations(performanceId);
-        
-        // ローカルデータから座席データを構築
-        return {
-          success: true,
-          seatMap: localSeats.reduce((map, seat) => {
-            map[`${seat.row}${seat.column}`] = seat;
-            return map;
-          }, {}),
-          reservations: localReservations
-        };
+        return await fallbackManager.getSeatsData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
       });
     }
     
@@ -765,7 +756,7 @@ async function checkInSelected() {
           name: selectedSeats.find(s => s.id === seatId)?.name || '',
           timestamp: Date.now()
         };
-        response = await offlineSync.checkinSeat(checkinData);
+        response = await fallbackManager.checkinSeat(checkinData);
       }
     }
     
@@ -881,7 +872,7 @@ async function confirmReservation() {
           name: 'オフライン予約',
           timestamp: Date.now()
         };
-        response = await offlineSync.reserveSeat(reservationData);
+        response = await fallbackManager.reserveSeat(reservationData);
       }
     }
     

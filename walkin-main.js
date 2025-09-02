@@ -4,7 +4,9 @@
 
 import GasAPI from './api.js'; // GasAPIをインポート
 import { loadSidebar, toggleSidebar, showModeChangeModal, applyModeChange, closeModeModal } from './sidebar.js';
-import { offlineSync } from './offline-sync.js';
+import { fallbackManager } from './fallback-manager.js';
+import { systemStatus } from './system-status.js';
+import { errorHandler } from './error-handler-enhanced.js';
 
 // URLパラメータ取得
 const urlParams = new URLSearchParams(window.location.search);
@@ -157,7 +159,7 @@ async function issueWalkinConsecutive() {
   try {
     // オフライン対応: 連続席当日券発行
     let response;
-    if (offlineSync.isOnlineStatus()) {
+    if (fallbackManager.isOnlineStatus()) {
       // オンライン時はサーバーに送信
       response = await GasAPI.assignWalkInConsecutiveSeats(GROUP, DAY, TIMESLOT, num);
     } else {
@@ -166,7 +168,7 @@ async function issueWalkinConsecutive() {
       const performanceId = `${GROUP}_${DAY}_${TIMESLOT}`;
       
       // ローカルから空席を取得して連続席を探す
-      const localSeats = await offlineSync.getSeats(performanceId);
+      const localSeats = await fallbackManager.getSeatsData(GROUP, DAY, TIMESLOT);
       const availableSeats = localSeats.filter(seat => seat.status === 'available');
       
       // 連続席を探すロジック（簡易版）
@@ -194,7 +196,7 @@ async function issueWalkinConsecutive() {
             name: '当日券',
             timestamp: Date.now()
           };
-          await offlineSync.issueWalkinTicket(walkinData);
+          await fallbackManager.issueWalkinTicket(walkinData);
         }
         
         response = {
@@ -253,7 +255,7 @@ async function issueWalkinAnywhere() {
   try {
     // オフライン対応: ランダム当日券発行
     let response;
-    if (offlineSync.isOnlineStatus()) {
+    if (fallbackManager.isOnlineStatus()) {
       // オンライン時はサーバーに送信
       if (num === 1) {
         response = await GasAPI.assignWalkInSeat(GROUP, DAY, TIMESLOT);
@@ -266,7 +268,7 @@ async function issueWalkinAnywhere() {
       const performanceId = `${GROUP}_${DAY}_${TIMESLOT}`;
       
       // ローカルから空席を取得
-      const localSeats = await offlineSync.getSeats(performanceId);
+      const localSeats = await fallbackManager.getSeatsData(GROUP, DAY, TIMESLOT);
       const availableSeats = localSeats.filter(seat => seat.status === 'available');
       
       if (availableSeats.length >= num) {
@@ -284,7 +286,7 @@ async function issueWalkinAnywhere() {
             name: '当日券',
             timestamp: Date.now()
           };
-          await offlineSync.issueWalkinTicket(walkinData);
+          await fallbackManager.issueWalkinTicket(walkinData);
           selectedSeats.push(seat);
         }
         
