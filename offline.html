@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オフライン - チケット管理システム</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .offline-container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .offline-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #FF9800;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .retry-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .retry-button:hover {
+            background: #45a049;
+        }
+        
+        .offline-features {
+            margin-top: 30px;
+            text-align: left;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .offline-features h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .offline-features ul {
+            color: #666;
+            line-height: 1.8;
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .offline-features li {
+            margin-bottom: 8px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #FF9800;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📶</div>
+        <h1><span class="status-indicator"></span>オフライン状態</h1>
+        <p>
+            現在インターネット接続が利用できません。<br>
+            チケット管理システムはローカルデータを使用して動作を継続します。
+        </p>
+        
+        <button class="retry-button" onclick="retryConnection()">
+            接続を再試行
+        </button>
+        
+        <div class="offline-features">
+            <h3>オフライン時でも利用可能な機能：</h3>
+            <ul>
+                <li>座席データの表示（ローカルキャッシュ）</li>
+                <li>予約・チェックイン操作（ローカル保存）</li>
+                <li>当日券発行（ローカル保存）</li>
+                <li>管理者編集機能（ローカル保存）</li>
+            </ul>
+            <p style="margin-top: 15px; font-size: 14px; color: #888;">
+                ※ オンライン復帰時に自動的にサーバーと同期されます
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function retryConnection() {
+            const button = document.querySelector('.retry-button');
+            button.textContent = '接続確認中...';
+            button.disabled = true;
+            
+            // 接続テスト
+            fetch('/api.js', { method: 'HEAD' })
+                .then(() => {
+                    // 接続成功
+                    window.location.reload();
+                })
+                .catch(() => {
+                    // 接続失敗
+                    button.textContent = '接続を再試行';
+                    button.disabled = false;
+                    alert('まだオフライン状態です。しばらく待ってから再試行してください。');
+                });
+        }
+        
+        // 定期的に接続状態をチェック
+        setInterval(() => {
+            if (navigator.onLine) {
+                window.location.reload();
+            }
+        }, 5000);
+        
+        // オンライン復帰時の自動リロード
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

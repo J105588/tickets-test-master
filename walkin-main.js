@@ -4,6 +4,7 @@
 
 import GasAPI from './api.js'; // GasAPIをインポート
 import { loadSidebar, toggleSidebar, showModeChangeModal, applyModeChange, closeModeModal } from './sidebar.js';
+import { offlineSync } from './offline-sync.js';
 
 // URLパラメータ取得
 const urlParams = new URLSearchParams(window.location.search);
@@ -154,7 +155,60 @@ async function issueWalkinConsecutive() {
   reservationResult.classList.remove('show');
 
   try {
-    const response = await GasAPI.assignWalkInConsecutiveSeats(GROUP, DAY, TIMESLOT, num);
+    // オフライン対応: 連続席当日券発行
+    let response;
+    if (offlineSync.isOnlineStatus()) {
+      // オンライン時はサーバーに送信
+      response = await GasAPI.assignWalkInConsecutiveSeats(GROUP, DAY, TIMESLOT, num);
+    } else {
+      // オフライン時はローカルに保存
+      console.log('オフライン状態のためローカル保存');
+      const performanceId = `${GROUP}_${DAY}_${TIMESLOT}`;
+      
+      // ローカルから空席を取得して連続席を探す
+      const localSeats = await offlineSync.getSeats(performanceId);
+      const availableSeats = localSeats.filter(seat => seat.status === 'available');
+      
+      // 連続席を探すロジック（簡易版）
+      let consecutiveSeats = [];
+      for (let row = 0; row < 5; row++) {
+        const rowSeats = availableSeats.filter(seat => seat.row === String.fromCharCode(65 + row));
+        for (let i = 0; i <= rowSeats.length - num; i++) {
+          const consecutive = rowSeats.slice(i, i + num);
+          if (consecutive.length === num) {
+            consecutiveSeats = consecutive;
+            break;
+          }
+        }
+        if (consecutiveSeats.length > 0) break;
+      }
+      
+      if (consecutiveSeats.length > 0) {
+        // 連続席を予約済みに変更
+        for (const seat of consecutiveSeats) {
+          const walkinData = {
+            performanceId,
+            row: seat.row,
+            column: seat.column,
+            status: 'reserved',
+            name: '当日券',
+            timestamp: Date.now()
+          };
+          await offlineSync.issueWalkinTicket(walkinData);
+        }
+        
+        response = {
+          success: true,
+          message: '当日券が発行されました（オフライン）',
+          seatIds: consecutiveSeats.map(seat => `${seat.row}${seat.column}`)
+        };
+      } else {
+        response = {
+          success: false,
+          message: '連続席が見つかりませんでした'
+        };
+      }
+    }
     if (response.success) {
       showLoader(false);
       showSuccessNotification(response.message || '座席が確保されました。');
@@ -197,11 +251,54 @@ async function issueWalkinAnywhere() {
   reservationResult.classList.remove('show');
 
   try {
+    // オフライン対応: ランダム当日券発行
     let response;
-    if (num === 1) {
-      response = await GasAPI.assignWalkInSeat(GROUP, DAY, TIMESLOT);
+    if (offlineSync.isOnlineStatus()) {
+      // オンライン時はサーバーに送信
+      if (num === 1) {
+        response = await GasAPI.assignWalkInSeat(GROUP, DAY, TIMESLOT);
+      } else {
+        response = await GasAPI.assignWalkInSeats(GROUP, DAY, TIMESLOT, num);
+      }
     } else {
-      response = await GasAPI.assignWalkInSeats(GROUP, DAY, TIMESLOT, num);
+      // オフライン時はローカルに保存
+      console.log('オフライン状態のためローカル保存');
+      const performanceId = `${GROUP}_${DAY}_${TIMESLOT}`;
+      
+      // ローカルから空席を取得
+      const localSeats = await offlineSync.getSeats(performanceId);
+      const availableSeats = localSeats.filter(seat => seat.status === 'available');
+      
+      if (availableSeats.length >= num) {
+        // ランダムに座席を選択
+        const selectedSeats = [];
+        const shuffled = availableSeats.sort(() => 0.5 - Math.random());
+        
+        for (let i = 0; i < num; i++) {
+          const seat = shuffled[i];
+          const walkinData = {
+            performanceId,
+            row: seat.row,
+            column: seat.column,
+            status: 'reserved',
+            name: '当日券',
+            timestamp: Date.now()
+          };
+          await offlineSync.issueWalkinTicket(walkinData);
+          selectedSeats.push(seat);
+        }
+        
+        response = {
+          success: true,
+          message: '当日券が発行されました（オフライン）',
+          seatIds: selectedSeats.map(seat => `${seat.row}${seat.column}`)
+        };
+      } else {
+        response = {
+          success: false,
+          message: '空席が不足しています'
+        };
+      }
     }
 
     if (response.success) {

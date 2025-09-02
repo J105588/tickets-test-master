@@ -2,6 +2,8 @@
 import GasAPI from './api.js';
 import { loadSidebar, toggleSidebar, showModeChangeModal, applyModeChange, closeModeModal } from './sidebar.js';
 import { GAS_API_URL, DEBUG_MODE, debugLog } from './config.js';
+import { offlineSync } from './offline-sync.js';
+import { priorityLoader } from './priority-loader.js';
 
 /**
  * 座席選択画面のメイン処理
@@ -98,7 +100,36 @@ window.onload = async () => {
     const isSuperAdminMode = currentMode === 'superadmin';
     
     console.log('GasAPI.getSeatData呼び出し:', { GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode });
-    const seatData = await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
+    
+    // オフライン対応: パフォーマンスIDを設定
+    const performanceId = `${GROUP}_${DAY}_${TIMESLOT}`;
+    offlineSync.setPerformanceId(performanceId);
+    
+    // 優先度付きで座席データを取得
+    let seatData;
+    if (offlineSync.isOnlineStatus()) {
+      // オンライン時は高優先度でサーバーから取得
+      seatData = await priorityLoader.loadHigh(async () => {
+        return await GasAPI.getSeatData(GROUP, DAY, TIMESLOT, isAdminMode, isSuperAdminMode);
+      });
+    } else {
+      // オフライン時は通常優先度でローカルから取得
+      seatData = await priorityLoader.loadNormal(async () => {
+        console.log('オフライン状態のためローカルデータを使用');
+        const localSeats = await offlineSync.getSeats(performanceId);
+        const localReservations = await offlineSync.getReservations(performanceId);
+        
+        // ローカルデータから座席データを構築
+        return {
+          success: true,
+          seatMap: localSeats.reduce((map, seat) => {
+            map[`${seat.row}${seat.column}`] = seat;
+            return map;
+          }, {}),
+          reservations: localReservations
+        };
+      });
+    }
     
     // 詳細なデバッグ情報をコンソールに出力
     console.log("===== 座席データ詳細情報 =====");
@@ -716,8 +747,27 @@ async function checkInSelected() {
   showLoader(true);
   
   try {
-    // バックグラウンドでAPI呼び出し
-    const response = await GasAPI.checkInMultipleSeats(GROUP, DAY, TIMESLOT, seatIds);
+    // オフライン対応: チェックイン処理
+    let response;
+    if (offlineSync.isOnlineStatus()) {
+      // オンライン時はサーバーに送信
+      response = await GasAPI.checkInMultipleSeats(GROUP, DAY, TIMESLOT, seatIds);
+    } else {
+      // オフライン時はローカルに保存
+      console.log('オフライン状態のためローカル保存');
+      for (const seatId of seatIds) {
+        const [row, column] = seatId.match(/([A-E])(\d+)/).slice(1);
+        const checkinData = {
+          performanceId: `${GROUP}_${DAY}_${TIMESLOT}`,
+          row,
+          column: parseInt(column),
+          status: 'checked-in',
+          name: selectedSeats.find(s => s.id === seatId)?.name || '',
+          timestamp: Date.now()
+        };
+        response = await offlineSync.checkinSeat(checkinData);
+      }
+    }
     
     if (response.success) {
       // 成功時：即座に成功メッセージを表示（ローダーは非表示）
@@ -813,7 +863,27 @@ async function confirmReservation() {
   showLoader(true);
   
   try {
-    const response = await GasAPI.reserveSeats(GROUP, DAY, TIMESLOT, seatsToReserve);
+    // オフライン対応: 予約処理
+    let response;
+    if (offlineSync.isOnlineStatus()) {
+      // オンライン時はサーバーに送信
+      response = await GasAPI.reserveSeats(GROUP, DAY, TIMESLOT, seatsToReserve);
+    } else {
+      // オフライン時はローカルに保存
+      console.log('オフライン状態のためローカル保存');
+      for (const seatId of seatsToReserve) {
+        const [row, column] = seatId.match(/([A-E])(\d+)/).slice(1);
+        const reservationData = {
+          performanceId: `${GROUP}_${DAY}_${TIMESLOT}`,
+          row,
+          column: parseInt(column),
+          status: 'reserved',
+          name: 'オフライン予約',
+          timestamp: Date.now()
+        };
+        response = await offlineSync.reserveSeat(reservationData);
+      }
+    }
     
     if (response.success) {
       // 成功時：即座に成功メッセージを表示（ローダーは非表示）
