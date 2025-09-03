@@ -1,7 +1,7 @@
 // offline-sync.js
 // オフライン検出とバックグラウンド同期管理
 
-import { GasAPI } from './api.js';
+import GasAPI from './api.js';
 import { dataSyncAPI } from './data-sync-api.js';
 import { offlineDB } from './offline-db.js';
 import { debugLog } from './config.js';

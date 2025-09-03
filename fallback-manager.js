@@ -1,7 +1,7 @@
 // fallback-manager.js
 // オフライン機能が使えなくてもシステムが問題なく動くためのフォールバック管理
 
-import { GasAPI } from './api.js';
+import GasAPI from './api.js';
 import { debugLog } from './config.js';
 
 class FallbackManager {

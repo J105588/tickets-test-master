@@ -1,7 +1,7 @@
 // data-sync-api.js
 // データ同期API - オフライン機能とサーバー間のデータ同期を管理
 
-import { GasAPI } from './api.js';
+import GasAPI from './api.js';
 import { fallbackManager } from './fallback-manager.js';
 import { debugLog } from './config.js';
 
