@@ -26,6 +26,8 @@ const CACHE_STRATEGIES = {
       '/api.js',
       '/offline-db.js',
       '/offline-sync.js',
+      '/data-sync-api.js',
+      '/offline-init.js',
       '/seats-main.js',
       '/walkin-main.js',
       '/timeslot-main.js',

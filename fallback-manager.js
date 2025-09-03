@@ -57,7 +57,7 @@ class FallbackManager {
       try {
         const { offlineSync } = await import('./offline-sync.js');
         
-        if (offlineSync.isOnlineStatus()) {
+        if (await offlineSync.isOnlineStatus()) {
           // オンライン時はサーバーから取得
           const response = await GasAPI.getSeatData(group, day, timeslot, isAdminMode, isSuperAdminMode);
           if (response.success) {
@@ -363,7 +363,7 @@ class FallbackManager {
   }
 
   // オンライン状態の確認（フォールバック対応）
-  isOnlineStatus() {
+  async isOnlineStatus() {
     if (this.isOfflineAvailable && !this.fallbackMode) {
       try {
         const { offlineSync } = await import('./offline-sync.js');
@@ -378,8 +378,8 @@ class FallbackManager {
   }
 
   // オフライン状態の確認（フォールバック対応）
-  isOfflineStatus() {
-    return !this.isOnlineStatus();
+  async isOfflineStatus() {
+    return !(await this.isOnlineStatus());
   }
 
   // フォールバックモードの状態を取得
@@ -414,13 +414,13 @@ class FallbackManager {
   }
 
   // 統計情報の取得
-  getStats() {
+  async getStats() {
     return {
       isOfflineAvailable: this.isOfflineAvailable,
       fallbackMode: this.fallbackMode,
       offlineErrorCount: this.offlineErrorCount,
       maxOfflineErrors: this.maxOfflineErrors,
-      isOnline: this.isOnlineStatus()
+      isOnline: await this.isOnlineStatus()
     };
   }
 

@@ -2,7 +2,7 @@
 // オフライン検出とバックグラウンド同期管理
 
 import { GasAPI } from './api.js';
-import DataSyncAPI from './data-sync-api.js';
+import { dataSyncAPI } from './data-sync-api.js';
 import { offlineDB } from './offline-db.js';
 import { debugLog } from './config.js';
 
@@ -81,14 +81,15 @@ class OfflineSync {
       const [group, day, timeslot] = this.performanceId.split('_');
       
       // データ取得専用APIを使用（高速化）
-      const seatsResponse = await DataSyncAPI.getSeats(group, day, timeslot);
+      const seatsResponse = await dataSyncAPI.syncSeatData(group, day, timeslot);
       if (seatsResponse.success) {
-        await offlineDB.saveSeats(this.performanceId, seatsResponse.data);
-        console.log('座席データ同期完了:', seatsResponse.data.length + '件');
+        const seatsData = Object.values(seatsResponse.seatMap || {});
+        await offlineDB.saveSeats(this.performanceId, seatsData);
+        console.log('座席データ同期完了:', seatsData.length + '件');
       }
 
       // 予約データを取得
-      const reservationsResponse = await DataSyncAPI.getReservations(group, day, timeslot);
+      const reservationsResponse = await dataSyncAPI.syncReservationData(this.performanceId);
       if (reservationsResponse.success) {
         for (const reservation of reservationsResponse.data) {
           await offlineDB.saveReservation(reservation);
@@ -127,7 +128,7 @@ class OfflineSync {
       const [group, day, timeslot] = this.performanceId.split('_');
       
       // データ取得専用APIを使用して一括同期
-      const response = await DataSyncAPI.syncChanges(group, day, timeslot, unsyncedChanges);
+      const response = await dataSyncAPI.syncSeatData(group, day, timeslot);
       
       if (response.success) {
         // 成功した変更を同期済みとしてマーク
@@ -164,7 +165,8 @@ class OfflineSync {
     if (this.isOnline) {
       // オンライン時はサーバーから取得してローカルに保存
       try {
-        const response = await GasAPI.getSeats(performanceId);
+        const [group, day, timeslot] = performanceId.split('_');
+        const response = await GasAPI.getSeatData(group, day, timeslot);
         if (response.success) {
           await offlineDB.saveSeats(performanceId, response.data);
           return response.data;
@@ -193,7 +195,8 @@ class OfflineSync {
     if (this.isOnline) {
       // オンライン時はサーバーから取得してローカルに保存
       try {
-        const response = await GasAPI.getReservations(performanceId);
+        const [group, day, timeslot] = performanceId.split('_');
+        const response = await GasAPI.getSeatData(group, day, timeslot);
         if (response.success) {
           for (const reservation of response.data) {
             await offlineDB.saveReservation(reservation);
@@ -230,7 +233,7 @@ class OfflineSync {
     if (this.isOnline) {
       // オンライン時は即座にサーバーに送信
       try {
-        const response = await GasAPI.reserveSeat(reservationData);
+        const response = await GasAPI.reserveSeats(reservationData.group, reservationData.day, reservationData.timeslot, [reservationData]);
         if (response.success) {
           // 成功した変更を同期済みとしてマーク
           const changes = await offlineDB.getUnsyncedChanges();
@@ -265,7 +268,7 @@ class OfflineSync {
     if (this.isOnline) {
       // オンライン時は即座にサーバーに送信
       try {
-        const response = await GasAPI.checkinSeat(checkinData);
+        const response = await GasAPI.checkInSeat(checkinData.group, checkinData.day, checkinData.timeslot, checkinData.seatId);
         if (response.success) {
           // 成功した変更を同期済みとしてマーク
           const changes = await offlineDB.getUnsyncedChanges();
@@ -300,7 +303,7 @@ class OfflineSync {
     if (this.isOnline) {
       // オンライン時は即座にサーバーに送信
       try {
-        const response = await GasAPI.issueWalkinTicket(walkinData);
+        const response = await GasAPI.assignWalkInSeats(walkinData.group, walkinData.day, walkinData.timeslot, walkinData.count);
         if (response.success) {
           // 成功した変更を同期済みとしてマーク
           const changes = await offlineDB.getUnsyncedChanges();
@@ -335,7 +338,7 @@ class OfflineSync {
     if (this.isOnline) {
       // オンライン時は即座にサーバーに送信
       try {
-        const response = await GasAPI.adminEditSeat(editData);
+        const response = await GasAPI.updateSeatData(editData.group, editData.day, editData.timeslot, editData.seatId, editData.columnC, editData.columnD, editData.columnE);
         if (response.success) {
           // 成功した変更を同期済みとしてマーク
           const changes = await offlineDB.getUnsyncedChanges();

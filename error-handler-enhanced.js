@@ -324,9 +324,9 @@ class ErrorHandler {
   }
 
   // エラーレポートを生成
-  generateErrorReport() {
+  async generateErrorReport() {
     const stats = this.getErrorStatistics();
-    const fallbackStats = fallbackManager.getStats();
+    const fallbackStats = await fallbackManager.getStats();
     
     const report = {
       timestamp: new Date().toISOString(),

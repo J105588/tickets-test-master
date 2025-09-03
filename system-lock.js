@@ -1,5 +1,5 @@
 // system-lock.js - システムロック機能
-import errorHandler from './error-handler.js';
+import { errorHandler } from './error-handler-enhanced.js';
 
 class SystemLock {
   constructor() {

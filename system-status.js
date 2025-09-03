@@ -71,8 +71,8 @@ class SystemStatus {
   // ステータスを更新
   async updateStatus() {
     try {
-      const stats = fallbackManager.getStats();
-      const isOnline = fallbackManager.isOnlineStatus();
+      const stats = await fallbackManager.getStats();
+      const isOnline = await fallbackManager.isOnlineStatus();
       
       let statusText = '';
       let statusColor = '#4CAF50'; // 緑
@@ -227,9 +227,9 @@ class SystemStatus {
   }
 
   // システム状態の詳細情報を表示
-  showDetailedStatus() {
-    const stats = fallbackManager.getStats();
-    const isOnline = fallbackManager.isOnlineStatus();
+  async showDetailedStatus() {
+    const stats = await fallbackManager.getStats();
+    const isOnline = await fallbackManager.isOnlineStatus();
     
     const details = [
       '=== システム状態詳細 ===',
