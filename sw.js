@@ -1,18 +1,19 @@
 // sw.js
 // Service Worker for background sync and offline support
 
-const CACHE_NAME = 'ticket-system-v2';
-const OFFLINE_URL = '/offline.html';
+const CACHE_NAME = 'ticket-system-v3';
+const OFFLINE_URL = '/index.html';
 
 // 優先度別キャッシュ戦略
 const CACHE_STRATEGIES = {
   CRITICAL: {
-    name: 'critical-cache',
+    name: 'critical-cache-v3',
     urls: [
       '/',
       '/index.html',
       '/seats.html',
       '/walkin.html',
+      '/timeslot.html',
       '/styles.css',
       '/config.js',
       '/priority-loader.js'
@@ -20,31 +21,46 @@ const CACHE_STRATEGIES = {
     strategy: 'cache-first'
   },
   HIGH: {
-    name: 'high-cache',
+    name: 'high-cache-v3',
     urls: [
       '/api.js',
-      '/data-sync-api.js',
       '/offline-db.js',
       '/offline-sync.js',
-      '/offline-init.js',
       '/seats-main.js',
       '/walkin-main.js',
-      '/sidebar.js'
+      '/timeslot-main.js',
+      '/index-main.js',
+      '/sidebar.js',
+      '/fallback-manager.js',
+      '/system-status.js',
+      '/error-handler-enhanced.js',
+      '/timeslot-schedules.js'
     ],
     strategy: 'stale-while-revalidate'
   },
   NORMAL: {
-    name: 'normal-cache',
+    name: 'normal-cache-v3',
     urls: [
       '/seats.css',
       '/walkin.css',
       '/sidebar.css',
-      '/timeslot.html',
-      '/timeslot-main.js',
-      '/error-handler.js',
       '/system-lock.js'
     ],
     strategy: 'network-first'
+  },
+  BACKGROUND: {
+    name: 'background-cache-v3',
+    urls: [
+      '/CNAME',
+      '/LICENSE',
+      '/README.md',
+      '/OFFLINE_README.md',
+      '/FALLBACK_SYSTEM_README.md',
+      '/SERVICE_WORKER_FIX.md',
+      '/SYSTEM_STRUCTURE.md',
+      '/OPTIMIZATION_README.md'
+    ],
+    strategy: 'cache-first'
   }
 };
 
@@ -52,7 +68,15 @@ const CACHE_STRATEGIES = {
 const NO_CACHE_URLS = [
   /\/api\//,
   /\/sync\//,
-  /\.(json|xml)$/
+  /\.(json|xml)$/,
+  /\.gs$/,  // GASファイルはキャッシュしない
+  /\/Code\.gs$/,
+  /\/DataSyncGAS\.gs$/,
+  /\/TimeSlotConfig\.gs$/,
+  /\/SpreadsheetIds\.gs$/,
+  /\/TimeSlotConfigOptimized\.gs$/,
+  /\/SpreadsheetIdsOptimized\.gs$/,
+  /\/system-setting\.gs$/
 ];
 
 // Service Worker インストール
@@ -77,7 +101,18 @@ self.addEventListener('install', (event) => {
 async function cacheCriticalResources() {
   const cache = await caches.open(CACHE_STRATEGIES.CRITICAL.name);
   console.log('クリティカルリソースをキャッシュ中...');
-  await cache.addAll(CACHE_STRATEGIES.CRITICAL.urls);
+  
+  // 各URLを個別にキャッシュしてエラーを回避
+  const cachePromises = CACHE_STRATEGIES.CRITICAL.urls.map(async (url) => {
+    try {
+      await cache.add(url);
+      console.log(`キャッシュ成功: ${url}`);
+    } catch (error) {
+      console.warn(`キャッシュ失敗: ${url}`, error);
+    }
+  });
+  
+  await Promise.allSettled(cachePromises);
   console.log('クリティカルリソースキャッシュ完了');
 }
 
@@ -85,12 +120,40 @@ async function cacheCriticalResources() {
 async function cacheOtherResources() {
   const highCache = await caches.open(CACHE_STRATEGIES.HIGH.name);
   const normalCache = await caches.open(CACHE_STRATEGIES.NORMAL.name);
+  const backgroundCache = await caches.open(CACHE_STRATEGIES.BACKGROUND.name);
   
   console.log('高優先度リソースをキャッシュ中...');
-  await highCache.addAll(CACHE_STRATEGIES.HIGH.urls);
+  const highCachePromises = CACHE_STRATEGIES.HIGH.urls.map(async (url) => {
+    try {
+      await highCache.add(url);
+      console.log(`高優先度キャッシュ成功: ${url}`);
+    } catch (error) {
+      console.warn(`高優先度キャッシュ失敗: ${url}`, error);
+    }
+  });
+  await Promise.allSettled(highCachePromises);
   
   console.log('通常優先度リソースをキャッシュ中...');
-  await normalCache.addAll(CACHE_STRATEGIES.NORMAL.urls);
+  const normalCachePromises = CACHE_STRATEGIES.NORMAL.urls.map(async (url) => {
+    try {
+      await normalCache.add(url);
+      console.log(`通常優先度キャッシュ成功: ${url}`);
+    } catch (error) {
+      console.warn(`通常優先度キャッシュ失敗: ${url}`, error);
+    }
+  });
+  await Promise.allSettled(normalCachePromises);
+  
+  console.log('バックグラウンドリソースをキャッシュ中...');
+  const backgroundCachePromises = CACHE_STRATEGIES.BACKGROUND.urls.map(async (url) => {
+    try {
+      await backgroundCache.add(url);
+      console.log(`バックグラウンドキャッシュ成功: ${url}`);
+    } catch (error) {
+      console.warn(`バックグラウンドキャッシュ失敗: ${url}`, error);
+    }
+  });
+  await Promise.allSettled(backgroundCachePromises);
   
   console.log('全リソースキャッシュ完了');
 }
@@ -117,7 +180,8 @@ async function cleanupOldCaches() {
   const oldCaches = cacheNames.filter(name => 
     name !== CACHE_STRATEGIES.CRITICAL.name &&
     name !== CACHE_STRATEGIES.HIGH.name &&
-    name !== CACHE_STRATEGIES.NORMAL.name
+    name !== CACHE_STRATEGIES.NORMAL.name &&
+    name !== CACHE_STRATEGIES.BACKGROUND.name
   );
   
   await Promise.all(
