@@ -1,7 +1,7 @@
 // config.js
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzw_TsViGUzWhMELA8e3FYjnI4bs-l1EzbRzZrXjWWVpkrTw6G7s4i7QZF57uzV8GkD/exec";
 // データ取得専用のGAS URL（オフライン同期用）
-const DATA_SYNC_GAS_URL = "https://script.google.com/macros/s/YOUR_DATA_SYNC_GAS_ID/exec";
+const DATA_SYNC_GAS_URL = "https://script.google.com/macros/s/AKfycbyAfTvgcE8rNUEpC6uAF5O7485DCXLjm4jdtc9Tk5-JjccpSN9CHIF_g1q4iqa0syx69Q/exec";
 // フェイルオーバー用に複数URLを保持可能（先頭から順に試行）
 const GAS_API_URLS = [
   GAS_API_URL,

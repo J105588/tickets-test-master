@@ -173,7 +173,7 @@ class FallbackManager {
       try {
         debugLog(`サーバーに予約を送信中 (試行 ${retryCount + 1}/${this.maxRetries})`);
         
-        const response = await GasAPI.reserveSeat(reservationData);
+        const response = await GasAPI.reserveSeats(reservationData.group, reservationData.day, reservationData.timeslot, [reservationData]);
         
         if (response.success) {
           debugLog('サーバーへの予約送信成功');
@@ -224,7 +224,7 @@ class FallbackManager {
     
     while (retryCount < this.maxRetries) {
       try {
-        const response = await GasAPI.checkinSeat(checkinData);
+        const response = await GasAPI.checkInSeat(checkinData.group, checkinData.day, checkinData.timeslot, checkinData.seatId);
         
         if (response.success) {
           return {
@@ -273,7 +273,7 @@ class FallbackManager {
     
     while (retryCount < this.maxRetries) {
       try {
-        const response = await GasAPI.issueWalkinTicket(walkinData);
+        const response = await GasAPI.assignWalkInSeats(walkinData.group, walkinData.day, walkinData.timeslot, walkinData.count);
         
         if (response.success) {
           return {
@@ -322,7 +322,7 @@ class FallbackManager {
     
     while (retryCount < this.maxRetries) {
       try {
-        const response = await GasAPI.adminEditSeat(editData);
+        const response = await GasAPI.updateSeatData(editData.group, editData.day, editData.timeslot, editData.seatId, editData.columnC, editData.columnD, editData.columnE);
         
         if (response.success) {
           return {

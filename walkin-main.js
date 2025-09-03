@@ -168,7 +168,8 @@ async function issueWalkinConsecutive() {
       const performanceId = `${GROUP}_${DAY}_${TIMESLOT}`;
       
       // ローカルから空席を取得して連続席を探す
-      const localSeats = await fallbackManager.getSeatsData(GROUP, DAY, TIMESLOT);
+      const seatData = await fallbackManager.getSeatsData(GROUP, DAY, TIMESLOT);
+      const localSeats = seatData.seatMap ? Object.values(seatData.seatMap) : [];
       const availableSeats = localSeats.filter(seat => seat.status === 'available');
       
       // 連続席を探すロジック（簡易版）
@@ -268,7 +269,8 @@ async function issueWalkinAnywhere() {
       const performanceId = `${GROUP}_${DAY}_${TIMESLOT}`;
       
       // ローカルから空席を取得
-      const localSeats = await fallbackManager.getSeatsData(GROUP, DAY, TIMESLOT);
+      const seatData = await fallbackManager.getSeatsData(GROUP, DAY, TIMESLOT);
+      const localSeats = seatData.seatMap ? Object.values(seatData.seatMap) : [];
       const availableSeats = localSeats.filter(seat => seat.status === 'available');
       
       if (availableSeats.length >= num) {
